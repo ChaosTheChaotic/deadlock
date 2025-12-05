@@ -3,24 +3,18 @@
 // ===============================
 
 // A realised sentence pair in English and German.
-export interface Sentence {
-    en: string;
-    de: string;
-}
+export type Sentence = {
+    en: string
+    de: string}
 
 /**
  * Term:
  * Represents a single atomic piece of language with an
  * English form and a German form.
  */
-export class Term {
+export type Term = {
     en: string;
     de: string;
-
-    constructor(en: string, de: string) {
-        this.en = en;
-        this.de = de;
-    }
 }
 
 /**
@@ -28,12 +22,8 @@ export class Term {
  * Represents one "slot" in a phrase that can be filled by
  * any of several alternative terms.
  */
-export class Section {
+export type Section = {
     terms: Term[];
-
-    constructor(terms: Term[]) {
-        this.terms = terms;
-    }
 }
 
 /**
@@ -41,12 +31,9 @@ export class Section {
  * Represents an ordered sequence of sections.
  * To realise a sentence, you pick exactly one term from each section.
  */
-export class Phrase {
+export type Phrase = {
     sections: Section[];
 
-    constructor(sections: Section[]) {
-        this.sections = sections;
-    }
 }
 
 /**
@@ -54,57 +41,70 @@ export class Phrase {
  * Represents a teaching grid with a title, description,
  * and several phrases.
  */
-export class Grid {
+export type Grid = {
     title: string;
     description: string;
     phrases: Phrase[];
-
-    constructor(title: string, description: string, phrases: Phrase[]) {
-        this.title = title;
-        this.description = description;
-        this.phrases = phrases;
-    }
 }
 
 // Example grid, slightly cleaned up.
-export const Grid_intro_yourself = new Grid(
-    "Introduce Yourself",
-    "Learn how to introduce yourself",
-    [
+export const Grid_intro_yourself: Grid = {
+    title: "Introduce Yourself",
+    description: "Learn how to introduce yourself",
+    phrases: [
         // Phrase 1: "Hello"
-        new Phrase([
-            new Section([
-                new Term("Hello", "Hallo")
-            ])
-        ]),
+        {
+            sections: [
+                {
+                    terms: [
+                        { en: "Hello", de: "Hallo" }
+                    ]
+                }
+            ]
+        },
 
         // Phrase 2: "My name is <name>"
-        new Phrase([
-            new Section([
-                new Term("My name is", "Ich heiße")
-            ]),
-            new Section([
-                new Term("John", "John"),
-                new Term("Mary", "Mary"),
-                new Term("Alex", "Alex")
-            ])
-        ])
+        {
+            sections: [
+                {
+                    terms: [
+                        { en: "I am called", de: "Ich heiße" },
+                        { en: "I am", de: "Ich bin" }
+                    ]
+                },
+                {
+                    terms: [
+                        { en: "John", de: "John" },
+                        { en: "Mary", de: "Mary" },
+                        { en: "Alex", de: "Alex" }
+                    ]
+                }
+            ]
+        }
     ]
-);
+};
 export function assembleAllSentencesFromPhrase(phrase: Phrase): Sentence[] {
     console.debug("Assembling sentences from phrase:", phrase);
 
     let partial: Sentence[] = [
         { en: "", de: "" }
-    ]
-    phrase.sections.forEach((section, sectionIndex) => {
-        console.debug(`Processing section ${sectionIndex}:`, section)
-        const newPartial: Sentence[] = [];
-        partial.forEach((partialSentence) => {
-            
+    ];
 
-        })
-    }
-    )
+    phrase.sections.forEach((section, sectionIndex) => {
+        console.debug(`Processing section ${sectionIndex}:`, section);
+        const newPartial: Sentence[] = [];
+        
+        partial.forEach((partialSentence) => {
+            section.terms.forEach((term) => {
+                newPartial.push({
+                    en: partialSentence.en + (partialSentence.en ? " " : "") + term.en,
+                    de: partialSentence.de + (partialSentence.de ? " " : "") + term.de
+                });
+            });
+        });
+        
+        partial = newPartial;
+    });
+
     return partial;
 }
