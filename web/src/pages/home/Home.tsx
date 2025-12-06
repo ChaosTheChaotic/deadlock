@@ -1,6 +1,7 @@
 import { useState, type ChangeEvent } from "react";
 import { useDebounce } from "../../hooks/useDebounce";
 import { trpc } from "../../servs/client";
+import "./Home.css"
 
 export const HomePage = () => {
   const [text, setText] = useState("");
