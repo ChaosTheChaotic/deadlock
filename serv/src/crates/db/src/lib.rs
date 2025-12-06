@@ -1,14 +1,12 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+use std::time::{SystemTime, UNIX_EPOCH};
+use napi_derive::napi;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+#[napi]
+pub fn time_diff(msg: String) -> String {
+    let start = SystemTime::now();
+    let time = match start.duration_since(UNIX_EPOCH) {
+        Ok(dse) => dse,
+        Err(e) => e.duration(),
+    };
+    format!("{msg}: {:?}", time)
 }
