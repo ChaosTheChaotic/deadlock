@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
  * @param val Value to debounce
  * @param delay Delay in ms
  * @returns Debounced value
-*/
+ */
 export function useDebounce<T>(val: T, delay: number): T {
   const [d, sd] = useState(val);
   const tr = useRef<number | null>(null);
@@ -21,7 +21,7 @@ export function useDebounce<T>(val: T, delay: number): T {
 
     return () => {
       if (tr.current !== null) {
-	clearTimeout(tr.current);
+        clearTimeout(tr.current);
       }
     };
   }, [val, delay]);

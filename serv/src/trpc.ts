@@ -7,8 +7,8 @@ export const appRouter = t.router({
   hello: t.procedure
     .input(z.object({ name: z.string().optional() }))
     .query(({ input }) => {
-      return `Hello, ${input?.name || "world"}!`;
+      return `Hello, ${input.name ?? "world"}!`;
     }),
 });
 
-export type appRouter = typeof appRouter;
+export type AppRouter = typeof appRouter;

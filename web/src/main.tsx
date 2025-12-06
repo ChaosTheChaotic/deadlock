@@ -12,5 +12,5 @@ createRoot(document.getElementById("root")!).render(
         <HomePage />
       </QueryClientProvider>
     </trpc.Provider>
-  </StrictMode>
+  </StrictMode>,
 );
