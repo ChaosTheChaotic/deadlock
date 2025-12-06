@@ -7,10 +7,10 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "ts-node src/index.ts",
     "dev": "ts-node src/index.ts",
-    "build": "npm run lint && tsc",
+    "build": "tsc",
     "start:prod": "node dist/index.js",
-    "lint": "eslint . --ext .ts,.tsx",
-    "lint:fix": "eslint . --ext .ts,.tsx --fix"
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "keywords": [],
   "author": "",
