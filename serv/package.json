@@ -10,7 +10,9 @@
     "build": "tsc",
     "start:prod": "node dist/index.js",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "fmt": "prettier --write .",
+    "fix": "prettier --write . && eslint . --fix"
   },
   "keywords": [],
   "author": "",
