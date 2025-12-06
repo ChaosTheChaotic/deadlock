@@ -19,6 +19,7 @@
             typescript-language-server
             prettier
 	    eslint
+	    napi-rs-cli
           ];
         };
       });
