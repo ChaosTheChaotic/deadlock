@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2024"
 build = "build.rs"
 
+[lib]
+crate-type = ["cdylib"]
+
 [dependencies]
 napi = "3.6.1"
 napi-derive = "3.4.0"
