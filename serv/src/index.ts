@@ -1,15 +1,15 @@
-import express from 'express';
-import { createExpressMiddleware } from '@trpc/server/adapters/express';
-import { appRouter } from './trpc';
+import express from "express";
+import { createExpressMiddleware } from "@trpc/server/adapters/express";
+import { appRouter } from "./trpc";
 
-const app = express()
+const app = express();
 const port = 8888;
 
 app.use(
-  '/trpc',
+  "/trpc",
   createExpressMiddleware({
     router: appRouter,
-  })
+  }),
 );
 
 app.listen(port, () => {
