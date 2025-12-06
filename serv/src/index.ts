@@ -23,4 +23,5 @@ app.get(/^\/(?!trpc).*/, (req, res) => {
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
   console.log(`Frontend served from: ${cdp}`);
+  console.log(`http://localhost:${port}`)
 });
