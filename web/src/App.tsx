@@ -1,9 +1,14 @@
-import { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
-import reactLogo from './assets/react.svg';
-import viteLogo from '/vite.svg';
-import './App.css';
-import { HomePage } from './pages/pages';
+import { useState } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useNavigate,
+} from "react-router-dom";
+import reactLogo from "./assets/react.svg";
+import viteLogo from "/vite.svg";
+import "./App.css";
+import { HomePage } from "./pages/pages";
 
 const MainContent = () => {
   const [count, setCount] = useState(0);
@@ -31,14 +36,11 @@ const MainContent = () => {
       <p className="read-the-docs">
         Click on the Vite and React logos to learn more
       </p>
-      
-      <button onClick={() => nav("/home")}>
-	Home
-      </button>
+
+      <button onClick={() => nav("/home")}>Home</button>
     </>
   );
 };
-
 
 function App() {
   return (

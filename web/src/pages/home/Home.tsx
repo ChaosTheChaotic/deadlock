@@ -1,5 +1,3 @@
 export const HomePage = () => {
-  return (
-    "Hello, world"
-  );
+  return "Hello, world";
 };
