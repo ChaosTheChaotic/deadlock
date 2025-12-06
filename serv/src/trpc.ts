@@ -10,9 +10,11 @@ export const appRouter = t.router({
     .query(({ input }) => {
       return `Hello, ${input.name ?? "world"}!`;
     }),
-  timeDiff: t.procedure.input(z.object({ msg: z.string() })).query(({ input }) => {
-    return timeDiff(input.msg);
-  })
+  timeDiff: t.procedure
+    .input(z.object({ msg: z.string() }))
+    .query(({ input }) => {
+      return timeDiff(input.msg);
+    }),
 });
 
 export type AppRouter = typeof appRouter;

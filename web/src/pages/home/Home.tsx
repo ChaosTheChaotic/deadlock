@@ -8,27 +8,22 @@ export const HomePage = () => {
 
   const debouncedText = useDebounce(text, 500);
 
-  const {
-    data: textData,
-    isLoading: isTextLoading
-  } = trpc.hello.useQuery(
+  const { data: textData, isLoading: isTextLoading } = trpc.hello.useQuery(
     { name: debouncedText },
     {
       enabled: debouncedText.length > 0,
       refetchInterval: 2000,
-    }
+    },
   );
-  
-  const {
-    data: timeDiffData,
-    isLoading: isTimeDiffLoading
-  } = trpc.timeDiff.useQuery(
-    { msg: "Time" },
-    {
-      enabled: true,
-      refetchInterval: 1000,
-    }
-  );
+
+  const { data: timeDiffData, isLoading: isTimeDiffLoading } =
+    trpc.timeDiff.useQuery(
+      { msg: "Time" },
+      {
+        enabled: true,
+        refetchInterval: 1000,
+      },
+    );
 
   async function changeText(e: ChangeEvent<HTMLInputElement>) {
     setText(e.target.value);
