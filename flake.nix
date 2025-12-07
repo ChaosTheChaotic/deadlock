@@ -20,7 +20,9 @@
             prettier
 	    eslint
 	    napi-rs-cli
+	    docker
 	    docker-compose
+	    rootlesskit
 	    postgresql
 	    cargo
           ];
