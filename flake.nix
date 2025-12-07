@@ -44,7 +44,7 @@
               mkdir -p $HOME/.local/share/docker
               
               # Start dockerd-rootless in background and save PID
-              dockerd-rootless.sh --experimental --storage-driver overlay2 &
+              dockerd-rootless --experimental --storage-driver overlay2 &
               DOCKERD_PID=$!
               
               # Wait for Docker socket to be created
