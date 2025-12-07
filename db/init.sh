@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 set -e
 
-# Load environment variables or use defaults
 POSTGRES_USER="${POSTGRES_USER:-postgres}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-}"
 POSTGRES_DB="${POSTGRES_DB:-postgres}"
-HOST="${POSTGRES_HOST:-localhost}"
-PORT="${POSTGRES_PORT:-5432}"
 
-# Wait for PostgreSQL to be ready (useful in Docker environments)
+SOCKET_DIR="/var/run/postgresql"
+
 echo "Waiting for PostgreSQL to be ready..."
-until PGPASSWORD="${POSTGRES_PASSWORD}" psql -h "$HOST" -p "$PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c '\q' 2>/dev/null; do
+
+# Use the postgres default database for initial connection
+until psql -h /var/run/postgresql -U "$POSTGRES_USER" -d "postgres" -c '\q' 2>/dev/null; do
   echo "PostgreSQL is unavailable - sleeping"
   sleep 1
 done
@@ -19,25 +19,25 @@ echo "PostgreSQL is ready"
 
 # Create UIDB if it doesn't exist
 echo "Checking if UIDB database exists..."
-if ! PGPASSWORD="${POSTGRES_PASSWORD}" psql -h "$HOST" -p "$PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT 1 FROM pg_database WHERE datname='uidb';" | grep -q 1; then
+if ! psql -h /var/run/postgresql -U "$POSTGRES_USER" -d "postgres" -tAc "SELECT 1 FROM pg_database WHERE datname='uidb';" | grep -q 1; then
     echo "Creating UIDB database..."
-    PGPASSWORD="${POSTGRES_PASSWORD}" psql -h "$HOST" -p "$PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "CREATE DATABASE uidb;"
+    psql -h /var/run/postgresql -U "$POSTGRES_USER" -d "postgres" -c "CREATE DATABASE uidb;"
 else
     echo "UIDB database already exists"
 fi
 
 # Create GRIDS if it doesn't exist
 echo "Checking if GRIDS database exists..."
-if ! PGPASSWORD="${POSTGRES_PASSWORD}" psql -h "$HOST" -p "$PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT 1 FROM pg_database WHERE datname='grids';" | grep -q 1; then
+if ! psql -h /var/run/postgresql -U "$POSTGRES_USER" -d "postgres" -tAc "SELECT 1 FROM pg_database WHERE datname='grids';" | grep -q 1; then
     echo "Creating GRIDS database..."
-    PGPASSWORD="${POSTGRES_PASSWORD}" psql -h "$HOST" -p "$PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "CREATE DATABASE grids;"
+    psql -h /var/run/postgresql -U "$POSTGRES_USER" -d "postgres" -c "CREATE DATABASE grids;"
 else
     echo "GRIDS database already exists"
 fi
 
 # Configure UIDB
 echo "Configuring UIDB database..."
-PGPASSWORD="${POSTGRES_PASSWORD}" psql -h "$HOST" -p "$PORT" -U "$POSTGRES_USER" -d "uidb" <<EOF
+psql -h /var/run/postgresql -U "$POSTGRES_USER" -d "uidb" <<EOF
 -- Create extension if not exists
 CREATE EXTENSION IF NOT EXISTS citext;
 
@@ -57,7 +57,7 @@ EOF
 
 # Configure GRIDS
 echo "Configuring GRIDS database..."
-PGPASSWORD="${POSTGRES_PASSWORD}" psql -h "$HOST" -p "$PORT" -U "$POSTGRES_USER" -d "grids" <<EOF
+psql -h /var/run/postgresql -U "$POSTGRES_USER" -d "grids" <<EOF
 -- Create tables if not exists
 CREATE TABLE IF NOT EXISTS public.GRIDS (
   GridID INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
