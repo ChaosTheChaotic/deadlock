@@ -24,14 +24,27 @@
 	    postgresql
 	    cargo
           ];
-          shellHook = ''
-            echo "To start PostgreSQL: docker-compose up -d"
-            echo "To stop PostgreSQL: docker-compose down"
-            echo "To connect via CLI: psql -h localhost -U postgres -d postgres"
-            echo "To connect to UIDB: psql -h localhost -U postgres -d UIDB"
-            echo "To connect to GRIDS: psql -h localhost -U postgres -d GRIDS"
-            echo "With app user: psql -h localhost -U app_user -d UIDB"
-          '';
+	  shellHook = ''
+	      echo "Node: $(node --version)"
+	      echo "pnpm: $(pnpm --version)"
+	      echo ""
+	      echo "--- Database Options ---"
+	      echo "Option 1: Use the local PostgreSQL installed in this shell."
+	      echo "  Start: pg_ctl start -l /tmp/postgres.log"
+	      echo "  Stop : pg_ctl stop"
+	      echo ""
+	      echo "Option 2: Use Docker (recommended for isolation)."
+	      echo "  Start: docker-compose up -d"
+	      echo "  Stop : docker-compose down"
+	      echo ""
+	      echo "--- Application ---"
+	      echo "Web frontend (./web):"
+	      echo "  Dev server: pnpm run dev"
+	      echo "  Build     : pnpm run build"
+	      echo ""
+	      echo "Backend server (./serv):"
+	      echo "  Check its package.json for available scripts."
+	  '';
         };
       });
 }
