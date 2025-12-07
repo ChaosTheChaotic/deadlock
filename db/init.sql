@@ -1,6 +1,14 @@
--- Create the databases
-CREATE DATABASE IF NOT EXISTS UIDB;
-CREATE DATABASE IF NOT EXISTS GRIDS;
+-- Create the databases if not exists
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'UIDB') THEN
+        CREATE DATABASE UIDB;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'GRIDS') THEN
+        CREATE DATABASE GRIDS;
+    END IF;
+END
+$$;
 
 -- Configure UIDB initial settings
 \connect UIDB;
@@ -42,7 +50,7 @@ CREATE TABLE IF NOT EXISTS public.Sections (
 );
 
 CREATE TABLE IF NOT EXISTS public.Terms (
-  TermID INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY
+  TermID INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
   SectionID INT NOT NULL REFERENCES public.Sections(SectionID) ON DELETE CASCADE,
   EnText TEXT NOT NULL,
   DeText TEXT NOT NULL
