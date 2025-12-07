@@ -3,7 +3,7 @@ CREATE DATABASE IF NOT EXISTS UIDB;
 CREATE DATABASE IF NOT EXISTS GRIDS;
 
 -- Configure UIDB initial settings
-\c UIDB;
+\connect UIDB;
 
 CREATE EXTENSION IF NOT EXISTS citext;
 
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS public.Users (
 );
 
 -- Configure GRIDS database initial settings
-\c GRIDS;
+\connect GRIDS;
 
 CREATE TABLE IF NOT EXISTS public.GRIDS (
   GridID INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
