@@ -3,39 +3,50 @@ CREATE DATABASE IF NOT EXISTS UIDB;
 CREATE DATABASE IF NOT EXISTS GRIDS;
 
 -- Configure UIDB initial settings
-CREATE TABLE IF NOT EXISTS UIDB.public.Users (
+\c UIDB;
+
+CREATE EXTENSION IF NOT EXISTS citext;
+
+CREATE TABLE IF NOT EXISTS public.Users (
   UserID UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  Email NVARCHAR(254) UNIQUE NOT NULL,
+  Email CITEXT UNIQUE NOT NULL,
   PasswordHash TEXT NULL,
   OAuthProvider VARCHAR(50) NULL,
-  CreationTime TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CreationTime TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+
+  CONSTRAINT first_email_check CHECK (
+    -- Basic email validation where "@" must not be surrounded with whitespace and there must be a dot in the domain part
+    Email ~* '^[^[:space:]]+@[^[:space:]]+\.[^[:space:]]+$'
+  )
 );
 
 -- Configure GRIDS database initial settings
-CREATE TABLE IF NOT EXISTS GRIDS.public.GRIDS (
+\c GRIDS;
+
+CREATE TABLE IF NOT EXISTS public.GRIDS (
   GridID INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-  GridName NVARCHAR(128),
-  GridDesc NVARCHAR(255),
+  GridName VARCHAR(128),
+  GridDesc VARCHAR(255)
 );
 
-CREATE TABLE IF NOT EXISTS GRIDS.public.Phrases (
+CREATE TABLE IF NOT EXISTS public.Phrases (
   PhraseID INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-  GridID INT NOT NULL REFRENCES GRIDS.public.Grids(GridID) ON DELETE CASCADE,
-  PhraseOrder INT NOT NULL, -- Store order of phrase within grid
+  GridID INT NOT NULL REFERENCES public.Grids(GridID) ON DELETE CASCADE,
+  PhraseOrder INT NOT NULL -- Store order of phrase within grid
 );
 
-CREATE TABLE IF NOT EXISTS GRIDS.public.Sections (
+CREATE TABLE IF NOT EXISTS public.Sections (
   SectionID INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-  PhraseID INT NOT NULL REFRENCES GRIDS.public.Phrases(PhraseID) ON DELETE CASCADE,
-  SectionOrder INT NOT NULL, -- Section within phrase
+  PhraseID INT NOT NULL REFERENCES public.Phrases(PhraseID) ON DELETE CASCADE,
+  SectionOrder INT NOT NULL -- Section within phrase
 );
 
-CREATE TABLE IF NOT EXISTS GRIDS.public.Terms (
+CREATE TABLE IF NOT EXISTS public.Terms (
   TermID INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY
-  SectionID INT NOT NULL REFRENCES GRIDS.public.Sections(SectionID) ON DELETE CASCADE,
+  SectionID INT NOT NULL REFERENCES public.Sections(SectionID) ON DELETE CASCADE,
   EnText TEXT NOT NULL,
-  DeText TEXT NOT NULL,
+  DeText TEXT NOT NULL
 );
 
-CREATE INDEX idx_terms_en ON GRIDS.public.Terms(EnText)
-CREATE INDEX idx_terms_de ON GRIDS.public.Terms(DeText)
+CREATE INDEX idx_terms_en ON public.Terms(EnText);
+CREATE INDEX idx_terms_de ON public.Terms(DeText);
