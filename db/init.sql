@@ -1,14 +1,9 @@
 -- Create the databases if not exists
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'UIDB') THEN
-        CREATE DATABASE UIDB;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'GRIDS') THEN
-        CREATE DATABASE GRIDS;
-    END IF;
-END
-$$;
+SELECT 'CREATE DATABASE UIDB'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'UIDB')\gexec
+
+SELECT 'CREATE DATABASE GRIDS'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'GRIDS')\gexec
 
 -- Configure UIDB initial settings
 \connect UIDB;
