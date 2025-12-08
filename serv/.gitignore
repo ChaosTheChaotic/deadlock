@@ -1,0 +1,25 @@
+# Node.js and pnpm
+node_modules/
+.pnpm-store/
+pnpm-lock.yaml
+
+# TypeScript build artifacts
+dist/
+build/
+*.js
+*.d.ts
+*.map
+
+# ts-node cache
+.ts-node/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.*.local

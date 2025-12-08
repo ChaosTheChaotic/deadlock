@@ -1,0 +1,13 @@
+{
+  "package": "serv-db",
+  "napi": {
+    "binaryName": "db"
+  },
+  "scripts": {
+    "build": "napi build --release -o ../../rlibs/",
+    "build:debug": "napi build -o ../../rlibs/"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^3.5.0"
+  }
+}
