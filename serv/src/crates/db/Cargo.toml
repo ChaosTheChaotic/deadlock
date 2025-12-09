@@ -9,7 +9,8 @@ crate-type = ["cdylib"]
 
 [dependencies]
 deadpool-postgres = "0.14.1"
-napi = "3.6.1"
+dotenv = "0.15.0"
+napi = { version = "3.6.1", features = ["async"] }
 napi-derive = "3.4.0"
 tokio-postgres = "0.7.15"
 
