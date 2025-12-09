@@ -7,6 +7,7 @@ source $ABP/utils.sh
 check_installed "pnpm"
 check_installed "cargo"
 check_installed "rustc"
+check_installed "napi"
 
 cd $ABP/../web && pnpm i || fatal "Failed to install dependencies for website"
 echo "Installed deps for the website successfully"
