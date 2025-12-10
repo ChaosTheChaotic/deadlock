@@ -2,6 +2,8 @@
 /* eslint-disable */
 export declare function connectDb(): Promise<string>
 
+export declare function initializeDbs(): Promise<void>
+
 export declare function timeDiff(msg: string): string
 
 export interface User {

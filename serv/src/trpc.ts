@@ -1,6 +1,6 @@
 import { initTRPC } from "@trpc/server";
 import { z } from "zod";
-import { timeDiff, connectDb } from "./rlibs/index.js";
+import { timeDiff, connectDb, initializeDbs } from "./rlibs/index";
 
 export const t = initTRPC.create();
 
@@ -15,6 +15,9 @@ export const appRouter = t.router({
     .query(({ input }) => {
       return timeDiff(input.msg);
     }),
+  initDbs: t.procedure.query(async () => {
+    return await initializeDbs();
+  }),
   connectDB: t.procedure.query(async () => {
     return await connectDb();
   }),

@@ -8,6 +8,12 @@ export const HomePage = () => {
 
   const debouncedText = useDebounce(text, 500);
 
+  trpc.initDbs.useQuery(undefined, {
+    enabled: true,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+  });
+
   const { data: textData, isLoading: isTextLoading } = trpc.hello.useQuery(
     { name: debouncedText },
     {

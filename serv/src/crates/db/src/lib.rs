@@ -57,6 +57,7 @@ async fn init_db_pool(dbname: &str) -> Result<Pool, String> {
         .map_err(|e| format!("Failed to create pool: {}", e))
 }
 
+#[napi]
 pub async fn initialize_dbs() {
     let users_pool = init_db_pool("uidb")
         .await
@@ -87,8 +88,6 @@ pub fn get_grids_pool() -> &'static Pool {
 
 #[napi]
 pub async fn connect_db() -> napi::Result<String> {
-    initialize_dbs().await;
-
     // Test connection
     let ui_client = get_uidb_pool()
         .get()
