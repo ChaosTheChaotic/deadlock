@@ -25,6 +25,14 @@ export const HomePage = () => {
       },
     );
 
+  const { data: statusData, isLoading: isStatusLoading } = trpc.connectDB.useQuery(
+    undefined,
+    {
+      enabled: true,
+      refetchInterval: 2000,
+    }
+  )
+
   async function changeText(e: ChangeEvent<HTMLInputElement>) {
     setText(e.target.value);
   }
@@ -41,6 +49,7 @@ export const HomePage = () => {
         <p>Debounced: {debouncedText}</p>
         <p>Resp: {isTextLoading ? "Loading..." : textData}</p>
       </form>
+      <p>DB Status: {isStatusLoading ? "Loading..." : statusData}</p>
     </>
   );
 };
