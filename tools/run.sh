@@ -1,12 +1,21 @@
 #!/usr/bin/env bash
 
 ABP=$(dirname $(realpath "$0"))
+PR="$(dirname -- "$ABP")"
 
 source $ABP/utils.sh
 
-check_installed "pnpm"
+if [ ! -d "$PR/web/node_modules" ] || [ ! -d "$PR/serv/node_modules" ] || [! -d "$PR/serv/src/crates/db/node_modules"]; then
+    read -p "Setup is not complete, would you like to setup through the script? (Y/n): " yn
+    yn=${yn:-y}
+    case "$yn" in
+      [Yy]* ) "$ABP/setup.sh" || fatal "Setup failed";;
+      [Nn]* ) fatal "Not running setup script, aborting";;
+      * ) fatal "Invalid case hit";;
+    esac
+fi
 
-PR="$(dirname -- "$ABP")"
+check_installed "pnpm"
 
 cd $PR/web
 pnpm build && echo "Sucessfully built the web" || fatal "Failed to build web"
