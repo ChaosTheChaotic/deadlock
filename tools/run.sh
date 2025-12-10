@@ -15,7 +15,7 @@ if [ ! -d "$PR/web/node_modules" ] || [ ! -d "$PR/serv/node_modules" ] || [ ! -d
     esac
 fi
 
-check_installed_prompt "pnpm" "curl -fsSL https://get.pnpm.io/install.sh | sh -"
+check_common_deps
 
 cd $PR/web
 pnpm build && echo "Sucessfully built the web" || fatal "Failed to build web"

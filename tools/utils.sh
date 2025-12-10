@@ -32,3 +32,8 @@ function check_installed_prompt() {
     esac
   fi
 }
+
+function check_common_deps() {
+  check_installed_prompt "pnpm" "curl -fsSL https://get.pnpm.io/install.sh | sh -"
+  check_installed_prompt "cargo" "curl https://sh.rustup.rs -sSf | sh"
+}
