@@ -14,3 +14,19 @@ function check_installed() {
     fatal "$cmd not installed, please install it"
   fi
 }
+
+function check_installed_prompt() {
+  local cmd=$1
+  local icmd=$2
+
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "The following is only designed for linux machines, select no and install manually if not on linux"
+    read -p "$cmd is not installed, would you like to install it through the script? (y/N): " yn
+    yn=${yn:-n}
+    case "$yn" in
+      [Yy]* ) echo "Installing..." && icmd;;
+      [Nn]* ) fatal "$cmd not installed, which is needed to run this";;
+      * ) fatal "Invalid case hit";;
+    esac
+  fi
+}
