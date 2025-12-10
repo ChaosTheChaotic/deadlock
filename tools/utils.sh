@@ -21,7 +21,9 @@ function check_installed_prompt() {
 
   if ! command -v "$cmd" >/dev/null 2>&1; then
     echo "The following is only designed for linux machines, select no and install manually if not on linux"
-    read -p "$cmd is not installed, would you like to install it through the script? (y/N): " yn
+    echo "If yes is selected the following command will be run:"
+    echo "$icmd"
+    read -p "$cmd is not installed, would you like to install it through the script using the above command? (y/N): " yn
     yn=${yn:-n}
     case "$yn" in
       [Yy]* ) echo "Installing..." && icmd;;
