@@ -5,7 +5,7 @@ PR="$(dirname -- "$ABP")"
 
 source $ABP/utils.sh
 
-if [ ! -d "$PR/web/node_modules" ] || [ ! -d "$PR/serv/node_modules" ] || [! -d "$PR/serv/src/crates/db/node_modules"]; then
+if [ ! -d "$PR/web/node_modules" ] || [ ! -d "$PR/serv/node_modules" ] || [ ! -d "$PR/serv/src/crates/db/node_modules" ]; then
     read -p "Setup is not complete, would you like to setup through the script? (Y/n): " yn
     yn=${yn:-y}
     case "$yn" in
