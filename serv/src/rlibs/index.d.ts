@@ -3,3 +3,11 @@
 export declare function connectDb(): Promise<string>
 
 export declare function timeDiff(msg: string): string
+
+export interface User {
+  uid: string
+  email: string
+  pwdHash?: string
+  oauthProvider?: string
+  createTime: number
+}

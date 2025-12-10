@@ -68,7 +68,7 @@ pub async fn initialize_dbs() {
     let grids_pool = init_db_pool("grids")
         .await
         .expect("Failed to initialize database pool");
-    DB_POOL_USERS
+    DB_POOL_GRIDS
         .set(grids_pool)
         .expect("Database pool already initialized");
 }
