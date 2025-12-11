@@ -133,7 +133,7 @@ pub async fn search_users(email_str: String) -> napi::Result<Vec<User>> {
                 oauthprovider, 
                 date_part('epoch', creationtime) as creationtime
              FROM users 
-             WHERE email ILIKE $1"
+             WHERE email ILIKE $1",
         )
         .await
         .map_err(|e| napi::Error::from_reason(format!("Failed to prepare cached: {e}")))?;
