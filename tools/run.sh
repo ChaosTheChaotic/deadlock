@@ -3,7 +3,11 @@
 ABP=$(dirname $(realpath "$0"))
 PR="$(dirname -- "$ABP")"
 
+# Include utility functions
 source $ABP/utils.sh
+
+# Check setup
+check_common_deps
 
 if [ ! -d "$PR/web/node_modules" ] || [ ! -d "$PR/serv/node_modules" ] || [ ! -d "$PR/serv/src/crates/db/node_modules" ]; then
     read -p "Setup is not complete, would you like to setup through the script? (Y/n): " yn
@@ -15,8 +19,18 @@ if [ ! -d "$PR/web/node_modules" ] || [ ! -d "$PR/serv/node_modules" ] || [ ! -d
     esac
 fi
 
-check_common_deps
+# Check for running postgres
+psq=$(check_for_running_postgres)
 
+if [ "$psq" == "0" ]; then
+  echo "A running postgres was found!"
+elif [ "$psq" == "1" ]; then
+  echo "No running postgres was found, the program WILL error in console"
+else
+  echo "Invalid state"
+fi
+
+# Build everything and run
 cd $PR/web
 pnpm build && echo "Sucessfully built the web" || fatal "Failed to build web"
 

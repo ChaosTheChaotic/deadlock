@@ -37,3 +37,15 @@ function check_common_deps() {
   check_installed_prompt "pnpm" "curl -fsSL https://get.pnpm.io/install.sh | sh -"
   check_installed_prompt "cargo" "curl https://sh.rustup.rs -sSf | sh"
 }
+
+function check_for_running_postgres() {
+  if pg_isready -h $DB_HOST -p $DB_PORT > /dev/null 2>&1; then
+    echo "0"
+  elif command -v docker &> /dev/null; then
+    if docker ps -q | xargs -I {} docker inspect -f '{{.Config.Env}}' {} 2>/dev/null | grep POSTGRES_ >/dev/null 2>&1; then
+        echo "0"
+    fi
+  else
+    echo "1"
+  fi
+}
