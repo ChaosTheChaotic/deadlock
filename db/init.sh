@@ -5,8 +5,6 @@ POSTGRES_USER="${POSTGRES_USER:-postgres}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-}"
 POSTGRES_DB="${POSTGRES_DB:-postgres}"
 
-SOCKET_DIR="/var/run/postgresql"
-
 echo "Waiting for PostgreSQL to be ready..."
 
 # Use the postgres default database for initial connection
