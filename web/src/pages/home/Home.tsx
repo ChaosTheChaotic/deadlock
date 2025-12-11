@@ -5,6 +5,7 @@ import "./Home.css";
 
 export const HomePage = () => {
   const [text, setText] = useState("");
+  const [dbSearch, setDBSearch] = useState("");
 
   const debouncedText = useDebounce(text, 500);
 
@@ -37,8 +38,15 @@ export const HomePage = () => {
       refetchInterval: 2000,
     });
 
-  async function changeText(e: ChangeEvent<HTMLInputElement>) {
-    setText(e.target.value);
+  const { data: users, isLoading: isUsersLoading } = trpc.searchUsers.useQuery(
+    { email: dbSearch },
+    {
+      enabled: dbSearch.length > 0,
+    }
+  );
+
+  async function changeText(callback: React.Dispatch<React.SetStateAction<string>>, e: ChangeEvent<HTMLInputElement>) {
+    callback(e.target.value);
   }
 
   return (
@@ -47,13 +55,16 @@ export const HomePage = () => {
       <form>
         <label>
           Enter some text:
-          <input type="text" value={text} onChange={changeText} />
+          <input type="text" value={text} onChange={(e) => changeText(setText, e)} />
         </label>
         <p>Text: {text}</p>
         <p>Debounced: {debouncedText}</p>
         <p>Resp: {isTextLoading ? "Loading..." : textData}</p>
       </form>
       <p>DB Status: {isStatusLoading ? "Loading..." : statusData}</p>
+      <h2>Search DB:</h2>
+      <input type="text" value={dbSearch} onChange={(e) => changeText(setDBSearch, e)} />
+      <p>Users: {isUsersLoading ? "Loading..." : users?.join('\n')}</p>
     </>
   );
 };

@@ -126,7 +126,12 @@ pub async fn search_users(email_str: String) -> napi::Result<Vec<User>> {
     // Use parameterized query to prevent SQL injection
     let stmt = client
         .prepare_cached(
-            "SELECT uid, email, pwd_hash, oauth_provider, EXTRACT(EPOCH FROM create_time) as create_time 
+            "SELECT 
+                userid::text as userid, 
+                email, 
+                passwordhash, 
+                oauthprovider, 
+                date_part('epoch', creationtime) as creationtime
              FROM users 
              WHERE email ILIKE $1"
         )
@@ -143,12 +148,12 @@ pub async fn search_users(email_str: String) -> napi::Result<Vec<User>> {
     let users: Vec<User> = rows
         .into_iter()
         .map(|row| User {
-            uid: row.get("uid"),
+            uid: row.get("userid"),
             email: row.get("email"),
-            pwd_hash: row.get("pwd_hash"),
-            oauth_provider: row.get("oauth_provider"),
+            pwd_hash: row.get("passwordhash"),
+            oauth_provider: row.get("oauthprovider"),
             // Convert timestamp to f64 (seconds since epoch)
-            create_time: row.get::<_, f64>("create_time"),
+            create_time: row.get::<_, f64>("creationtime"),
         })
         .collect();
 

@@ -8,4 +8,4 @@ const bp = path.join(path.dirname(fileURLToPath(import.meta.url)), "db.node");
 
 const binding = req(bp);
 
-export const { timeDiff, initializeDbs, connectDb } = binding;
+export const { timeDiff, initializeDbs, connectDb, searchUsers } = binding;

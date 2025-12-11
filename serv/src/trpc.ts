@@ -1,6 +1,6 @@
 import { initTRPC } from "@trpc/server";
 import { z } from "zod";
-import { timeDiff, connectDb, initializeDbs } from "./rlibs/index";
+import { timeDiff, connectDb, initializeDbs, searchUsers } from "./rlibs/index";
 
 export const t = initTRPC.create();
 
@@ -20,6 +20,9 @@ export const appRouter = t.router({
   }),
   connectDB: t.procedure.query(async () => {
     return await connectDb();
+  }),
+  searchUsers: t.procedure.input(z.object({email: z.string() })).query(async ({ input }) => {
+    return await searchUsers(input.email)
   }),
 });
 
