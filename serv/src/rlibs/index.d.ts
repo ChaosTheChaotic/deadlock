@@ -6,8 +6,6 @@ export declare function initializeDbs(): Promise<void>
 
 export declare function searchUsers(emailStr: string): Promise<Array<User>>
 
-export declare function timeDiff(msg: string): string
-
 export interface User {
   uid: string
   email: string

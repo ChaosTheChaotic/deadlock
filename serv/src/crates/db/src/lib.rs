@@ -1,6 +1,5 @@
 use deadpool_postgres::{ManagerConfig, Pool, RecyclingMethod};
 use napi_derive::napi;
-use std::time::{SystemTime, UNIX_EPOCH};
 use tokio_postgres::NoTls;
 use tokio::sync::OnceCell;
 
@@ -15,16 +14,6 @@ pub struct User {
 
 static DB_POOL_USERS: OnceCell<Pool> = OnceCell::const_new();
 static DB_POOL_GRIDS: OnceCell<Pool> = OnceCell::const_new();
-
-#[napi]
-pub fn time_diff(msg: String) -> String {
-    let start = SystemTime::now();
-    let time = match start.duration_since(UNIX_EPOCH) {
-        Ok(dse) => dse,
-        Err(e) => e.duration(),
-    };
-    format!("{msg}: {:?}", time)
-}
 
 async fn init_db_pool(dbname: &str) -> Result<Pool, String> {
     dotenv::dotenv().ok();

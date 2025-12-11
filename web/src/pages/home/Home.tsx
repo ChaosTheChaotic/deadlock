@@ -24,15 +24,6 @@ export const HomePage = () => {
     },
   );
 
-  const { data: timeDiffData, isLoading: isTimeDiffLoading } =
-    trpc.timeDiff.useQuery(
-      { msg: "Time" },
-      {
-        enabled: true,
-        refetchInterval: 1000,
-      },
-    );
-
   const { data: statusData, isLoading: isStatusLoading } =
     trpc.connectDB.useQuery(undefined, {
       enabled: true,
@@ -55,7 +46,7 @@ export const HomePage = () => {
 
   return (
     <>
-      <h1>{isTimeDiffLoading ? "Loading..." : timeDiffData}</h1>
+      <h1>The test home page</h1>
       <form>
         <label>
           Enter some text:
