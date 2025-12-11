@@ -8,6 +8,7 @@ export const HomePage = () => {
   const [dbSearch, setDBSearch] = useState("");
 
   const debouncedText = useDebounce(text, 500);
+  const debouncedDB = useDebounce(dbSearch, 500);
 
   trpc.initDbs.useQuery(undefined, {
     enabled: true,
@@ -39,9 +40,9 @@ export const HomePage = () => {
     });
 
   const { data: users, isLoading: isUsersLoading } = trpc.searchUsers.useQuery(
-    { email: dbSearch },
+    { email: debouncedDB },
     {
-      enabled: dbSearch.length > 0,
+      enabled: debouncedDB.length > 0,
     }
   );
 
@@ -64,7 +65,7 @@ export const HomePage = () => {
       <p>DB Status: {isStatusLoading ? "Loading..." : statusData}</p>
       <h2>Search DB:</h2>
       <input type="text" value={dbSearch} onChange={(e) => changeText(setDBSearch, e)} />
-      <p>Users: {isUsersLoading ? "Loading..." : users?.join('\n')}</p>
+      <p>Users: {isUsersLoading ? "Loading..." : JSON.stringify(users, null, 2)}</p>
     </>
   );
 };
