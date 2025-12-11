@@ -115,3 +115,42 @@ pub async fn connect_db() -> napi::Result<String> {
         grid_rows.len()
     ))
 }
+
+#[napi]
+pub async fn search_users(email_str: String) -> napi::Result<Vec<User>> {
+    let client = get_uidb_pool()
+        .get()
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to get client from pool: {e}")))?;
+
+    // Use parameterized query to prevent SQL injection
+    let stmt = client
+        .prepare_cached(
+            "SELECT uid, email, pwd_hash, oauth_provider, EXTRACT(EPOCH FROM create_time) as create_time 
+             FROM users 
+             WHERE email ILIKE $1"
+        )
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to prepare cached: {e}")))?;
+
+    // Execute query with parameter
+    let rows = client
+        .query(&stmt, &[&format!("%{}%", email_str)])
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to execute query: {e}")))?;
+
+    // Map rows to User structs
+    let users: Vec<User> = rows
+        .into_iter()
+        .map(|row| User {
+            uid: row.get("uid"),
+            email: row.get("email"),
+            pwd_hash: row.get("pwd_hash"),
+            oauth_provider: row.get("oauth_provider"),
+            // Convert timestamp to f64 (seconds since epoch)
+            create_time: row.get::<_, f64>("create_time"),
+        })
+        .collect();
+
+    Ok(users)
+}
