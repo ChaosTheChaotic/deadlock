@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { useDebounce } from "../../hooks/useDebounce";
 import { trpc } from "../../servs/client";
 import "./Home.css";
@@ -6,15 +6,34 @@ import "./Home.css";
 export const HomePage = () => {
   const [text, setText] = useState("");
   const [dbSearch, setDBSearch] = useState("");
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [initError, setInitError] = useState<string | null>(null);
 
   const debouncedText = useDebounce(text, 500);
   const debouncedDB = useDebounce(dbSearch, 500);
 
-  trpc.initDbs.useQuery(undefined, {
-    enabled: true,
-    refetchOnMount: false,
+  const initQuery = trpc.initDbs.useQuery(undefined, {
+    enabled: false,
+    retry: 2,
     refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
+
+  useEffect(() => {
+    // Trigger initialization on component mount
+    const initDatabase = async () => {
+      try {
+        await initQuery.refetch();
+        setIsInitialized(true);
+        setInitError(null);
+      } catch (error) {
+        setInitError("Failed to initialize database");
+        console.error("Database initialization error:", error);
+      }
+    };
+
+    initDatabase();
+  }, []);
 
   const { data: textData, isLoading: isTextLoading } = trpc.hello.useQuery(
     { name: debouncedText },
@@ -26,14 +45,14 @@ export const HomePage = () => {
 
   const { data: statusData, isLoading: isStatusLoading } =
     trpc.connectDB.useQuery(undefined, {
-      enabled: true,
-      refetchInterval: 2000,
+      enabled: isInitialized,
+      refetchInterval: false,
     });
 
   const { data: users, isLoading: isUsersLoading } = trpc.searchUsers.useQuery(
     { email: debouncedDB },
     {
-      enabled: debouncedDB.length > 0,
+      enabled: isInitialized && debouncedDB.length > 0,
     },
   );
 
@@ -47,6 +66,30 @@ export const HomePage = () => {
   return (
     <>
       <h1>The test home page</h1>
+
+      <div style={{ marginBottom: "1rem" }}>
+        <p>
+          Database Status:
+          {initQuery.isLoading
+            ? "Initializing..."
+            : initError
+              ? `Error: ${initError}`
+              : !isInitialized
+                ? "Not Initialized"
+                : isStatusLoading
+                  ? "Connecting..."
+                  : statusData || "Connected"}
+        </p>
+        {initError && (
+          <button
+            onClick={() => window.location.reload()}
+            style={{ padding: "0.5rem 1rem", marginTop: "0.5rem" }}
+          >
+            Retry Initialization
+          </button>
+        )}
+      </div>
+
       <form>
         <label>
           Enter some text:
@@ -60,12 +103,16 @@ export const HomePage = () => {
         <p>Debounced: {debouncedText}</p>
         <p>Resp: {isTextLoading ? "Loading..." : textData}</p>
       </form>
-      <p>DB Status: {isStatusLoading ? "Loading..." : statusData}</p>
+
       <h2>Search DB:</h2>
       <input
         type="text"
         value={dbSearch}
         onChange={(e) => changeText(setDBSearch, e)}
+        disabled={!isInitialized}
+        placeholder={
+          !isInitialized ? "Database initializing..." : "Search users by email"
+        }
       />
       <p>
         Users: {isUsersLoading ? "Loading..." : JSON.stringify(users, null, 2)}
