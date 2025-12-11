@@ -120,11 +120,11 @@ pub async fn search_users(email_str: String) -> napi::Result<Vec<User>> {
     let stmt = client
         .prepare_cached(
             "SELECT 
-                userid::text as userid, 
+                uid::text as uid, 
                 email, 
-                passwordhash, 
-                oauthprovider, 
-                date_part('epoch', creationtime) as creationtime
+                password_hash, 
+                oauth_provider, 
+                date_part('epoch', creation_time) as creation_time
              FROM users 
              WHERE email ILIKE $1",
         )
@@ -141,12 +141,12 @@ pub async fn search_users(email_str: String) -> napi::Result<Vec<User>> {
     let users: Vec<User> = rows
         .into_iter()
         .map(|row| User {
-            uid: row.get("userid"),
+            uid: row.get("uid"),
             email: row.get("email"),
-            pwd_hash: row.get("passwordhash"),
-            oauth_provider: row.get("oauthprovider"),
+            pwd_hash: row.get("password_hash"),
+            oauth_provider: row.get("oauth_provider"),
             // Convert timestamp to f64 (seconds since epoch)
-            create_time: row.get::<_, f64>("creationtime"),
+            create_time: row.get::<_, f64>("creation_time"),
         })
         .collect();
 
