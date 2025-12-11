@@ -43,10 +43,13 @@ export const HomePage = () => {
     { email: debouncedDB },
     {
       enabled: debouncedDB.length > 0,
-    }
+    },
   );
 
-  async function changeText(callback: React.Dispatch<React.SetStateAction<string>>, e: ChangeEvent<HTMLInputElement>) {
+  async function changeText(
+    callback: React.Dispatch<React.SetStateAction<string>>,
+    e: ChangeEvent<HTMLInputElement>,
+  ) {
     callback(e.target.value);
   }
 
@@ -56,7 +59,11 @@ export const HomePage = () => {
       <form>
         <label>
           Enter some text:
-          <input type="text" value={text} onChange={(e) => changeText(setText, e)} />
+          <input
+            type="text"
+            value={text}
+            onChange={(e) => changeText(setText, e)}
+          />
         </label>
         <p>Text: {text}</p>
         <p>Debounced: {debouncedText}</p>
@@ -64,8 +71,14 @@ export const HomePage = () => {
       </form>
       <p>DB Status: {isStatusLoading ? "Loading..." : statusData}</p>
       <h2>Search DB:</h2>
-      <input type="text" value={dbSearch} onChange={(e) => changeText(setDBSearch, e)} />
-      <p>Users: {isUsersLoading ? "Loading..." : JSON.stringify(users, null, 2)}</p>
+      <input
+        type="text"
+        value={dbSearch}
+        onChange={(e) => changeText(setDBSearch, e)}
+      />
+      <p>
+        Users: {isUsersLoading ? "Loading..." : JSON.stringify(users, null, 2)}
+      </p>
     </>
   );
 };

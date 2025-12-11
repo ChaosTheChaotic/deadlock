@@ -21,9 +21,11 @@ export const appRouter = t.router({
   connectDB: t.procedure.query(async () => {
     return await connectDb();
   }),
-  searchUsers: t.procedure.input(z.object({email: z.string() })).query(async ({ input }) => {
-    return await searchUsers(input.email)
-  }),
+  searchUsers: t.procedure
+    .input(z.object({ email: z.string() }))
+    .query(async ({ input }) => {
+      return await searchUsers(input.email);
+    }),
 });
 
 export type AppRouter = typeof appRouter;
