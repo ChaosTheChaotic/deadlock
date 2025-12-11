@@ -1,8 +1,8 @@
 use deadpool_postgres::{ManagerConfig, Pool, RecyclingMethod};
 use napi_derive::napi;
-use once_cell::sync::OnceCell;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio_postgres::NoTls;
+use tokio::sync::OnceCell;
 
 #[napi(object)]
 pub struct User {
@@ -13,8 +13,8 @@ pub struct User {
     pub create_time: f64,
 }
 
-static DB_POOL_USERS: OnceCell<Pool> = OnceCell::new();
-static DB_POOL_GRIDS: OnceCell<Pool> = OnceCell::new();
+static DB_POOL_USERS: OnceCell<Pool> = OnceCell::const_new();
+static DB_POOL_GRIDS: OnceCell<Pool> = OnceCell::const_new();
 
 #[napi]
 pub fn time_diff(msg: String) -> String {
@@ -59,19 +59,12 @@ async fn init_db_pool(dbname: &str) -> Result<Pool, String> {
 
 #[napi]
 pub async fn initialize_dbs() {
-    let users_pool = init_db_pool("uidb")
-        .await
-        .expect("Failed to initialize database pool");
-    DB_POOL_USERS
-        .set(users_pool)
-        .expect("Database pool already initialized");
-
-    let grids_pool = init_db_pool("grids")
-        .await
-        .expect("Failed to initialize database pool");
-    DB_POOL_GRIDS
-        .set(grids_pool)
-        .expect("Database pool already initialized");
+    DB_POOL_USERS.get_or_init(|| async {
+        init_db_pool("uidb").await.expect("Failed to init db pool")
+    }).await;
+    DB_POOL_GRIDS.get_or_init(|| async {
+        init_db_pool("grids").await.expect("Failed to init db pool")
+    }).await;
 }
 
 pub fn get_uidb_pool() -> &'static Pool {
