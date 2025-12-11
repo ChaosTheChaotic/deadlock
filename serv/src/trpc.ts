@@ -1,6 +1,6 @@
 import { initTRPC } from "@trpc/server";
 import { z } from "zod";
-import { connectDb, initializeDbs, searchUsers } from "./rlibs/index";
+import { addUser, connectDb, initializeDbs, searchUsers } from "./rlibs/index";
 
 export const t = initTRPC.create();
 
@@ -21,6 +21,11 @@ export const appRouter = t.router({
     .query(async ({ input }) => {
       return await searchUsers(input.email);
     }),
+  addUser: t.procedure
+    .input(z.object({ email: z.string(), pass: z.string().optional(), oauthProvider: z.string().optional() }))
+    .query(async ({ input }) => {
+    return await addUser(input.email, input.pass, input.oauthProvider)
+  })
 });
 
 export type AppRouter = typeof appRouter;

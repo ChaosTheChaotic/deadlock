@@ -1,7 +1,7 @@
 use deadpool_postgres::{ManagerConfig, Pool, RecyclingMethod};
 use napi_derive::napi;
-use tokio_postgres::NoTls;
 use tokio::sync::OnceCell;
+use tokio_postgres::{NoTls, Row};
 
 #[napi(object)]
 pub struct User {
@@ -48,12 +48,12 @@ async fn init_db_pool(dbname: &str) -> Result<Pool, String> {
 
 #[napi]
 pub async fn initialize_dbs() {
-    DB_POOL_USERS.get_or_init(|| async {
-        init_db_pool("uidb").await.expect("Failed to init db pool")
-    }).await;
-    DB_POOL_GRIDS.get_or_init(|| async {
-        init_db_pool("grids").await.expect("Failed to init db pool")
-    }).await;
+    DB_POOL_USERS
+        .get_or_init(|| async { init_db_pool("uidb").await.expect("Failed to init db pool") })
+        .await;
+    DB_POOL_GRIDS
+        .get_or_init(|| async { init_db_pool("grids").await.expect("Failed to init db pool") })
+        .await;
 }
 
 pub fn get_uidb_pool() -> &'static Pool {
@@ -98,6 +98,16 @@ pub async fn connect_db() -> napi::Result<String> {
     ))
 }
 
+pub fn user_from_row(row: Row) -> User {
+    User {
+        uid: row.get("uid"),
+        email: row.get("email"),
+        pwd_hash: row.get("password_hash"),
+        oauth_provider: row.get("oauth_provider"),
+        create_time: row.get::<_, f64>("creation_time"),
+    }
+}
+
 #[napi]
 pub async fn search_users(email_str: String) -> napi::Result<Vec<User>> {
     let client = get_uidb_pool()
@@ -127,17 +137,45 @@ pub async fn search_users(email_str: String) -> napi::Result<Vec<User>> {
         .map_err(|e| napi::Error::from_reason(format!("Failed to execute query: {e}")))?;
 
     // Map rows to User structs
-    let users: Vec<User> = rows
-        .into_iter()
-        .map(|row| User {
-            uid: row.get("uid"),
-            email: row.get("email"),
-            pwd_hash: row.get("password_hash"),
-            oauth_provider: row.get("oauth_provider"),
-            // Convert timestamp to f64 (seconds since epoch)
-            create_time: row.get::<_, f64>("creation_time"),
-        })
-        .collect();
+    let users: Vec<User> = rows.into_iter().map(|row| user_from_row(row)).collect();
 
     Ok(users)
+}
+
+#[napi]
+pub async fn add_user(
+    email: String,
+    pass: Option<String>,
+    oauth_provider: Option<String>,
+) -> napi::Result<User> {
+    if pass.is_none() && oauth_provider.is_none() {
+        return Err(napi::Error::from_status(napi::Status::InvalidArg));
+    }
+    let client = get_uidb_pool()
+        .get()
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to get client from pool: {e}")))?;
+    let stmt = client
+        .prepare_cached(&format!(
+            "INSERT INTO users (email, {}) VALUES ($1, $2) RETURNING *",
+            if pass.is_some() {
+                "password_hash"
+            } else {
+                "oauth_provider"
+            }
+        ))
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to prepare cached: {e}")))?;
+    let value_to_bind = if pass.is_some() {
+        pass.as_ref().unwrap()
+    } else {
+        oauth_provider.as_ref().unwrap()
+    };
+    let row = client
+        .query_one(&stmt, &[&email, &value_to_bind])
+        .await
+        .map_err(|e| {
+            napi::Error::from_reason(format!("Failed to execute insert statement: {e}"))
+        })?;
+    Ok(user_from_row(row))
 }
