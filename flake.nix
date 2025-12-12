@@ -84,7 +84,9 @@
               echo "Warning: Docker may not be ready yet"
             fi
 
+	    echo "--- Rustup setup ---"
 	    rustup default stable
+	    echo "--- Rustup setup complete ---"
             
             echo ""
             echo "--- Database Options ---"

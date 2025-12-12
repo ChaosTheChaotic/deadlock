@@ -22,10 +22,16 @@ export const appRouter = t.router({
       return await searchUsers(input.email);
     }),
   addUser: t.procedure
-    .input(z.object({ email: z.string(), pass: z.string().optional(), oauthProvider: z.string().optional() }))
+    .input(
+      z.object({
+        email: z.string(),
+        pass: z.string().optional(),
+        oauthProvider: z.string().optional(),
+      }),
+    )
     .mutation(async ({ input }) => {
-    return await addUser(input.email, input.pass, input.oauthProvider)
-  })
+      return await addUser(input.email, input.pass, input.oauthProvider);
+    }),
 });
 
 export type AppRouter = typeof appRouter;
