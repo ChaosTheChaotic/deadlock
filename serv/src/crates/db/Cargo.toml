@@ -8,8 +8,14 @@ build = "build.rs"
 crate-type = ["cdylib"]
 
 [dependencies]
-napi = "3.6.1"
+argon2 = "0.5.3"
+deadpool-postgres = "0.14.1"
+dotenv = "0.15.0"
+napi = { version = "3.6.1", features = ["async"] }
 napi-derive = "3.4.0"
+rand_core = { version = "0.6.4", features = ["getrandom"] }
+tokio = "1.48.0"
+tokio-postgres = "0.7.15"
 
 [build-dependencies]
 napi-build = "2.3.1"
