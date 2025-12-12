@@ -23,7 +23,7 @@ export const appRouter = t.router({
     }),
   addUser: t.procedure
     .input(z.object({ email: z.string(), pass: z.string().optional(), oauthProvider: z.string().optional() }))
-    .query(async ({ input }) => {
+    .mutation(async ({ input }) => {
     return await addUser(input.email, input.pass, input.oauthProvider)
   })
 });

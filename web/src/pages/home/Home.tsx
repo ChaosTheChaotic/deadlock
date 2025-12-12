@@ -10,7 +10,7 @@ export const HomePage = () => {
   const [initError, setInitError] = useState<string | null>(null);
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserPassword, setNewUserPassword] = useState("");
-  const [newUserDisplay] = useState("");
+  const [newUserDisplay, setNewUserDisplay] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   const debouncedText = useDebounce(text, 500);
@@ -72,7 +72,18 @@ export const HomePage = () => {
   };
 
   async function addNewUser(email: string, pass: string) {
-    // TODO: Add linking to the server endpoint for adding a new user
+    if (!email || !pass) {
+      setNewUserDisplay("Error: Email and password are required");
+      return;
+    }
+    try {
+      const mutation = trpc.addUser.useMutation();
+      const newUser = await mutation.mutateAsync({ email, pass })
+      setNewUserDisplay(JSON.stringify(newUser, null, 2))
+    } catch (e) {
+      console.error(e);
+      setNewUserDisplay("Error occurred");
+    }
   }
 
   return (
