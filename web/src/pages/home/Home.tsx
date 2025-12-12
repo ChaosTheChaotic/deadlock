@@ -16,6 +16,8 @@ export const HomePage = () => {
   const debouncedText = useDebounce(text, 500);
   const debouncedDB = useDebounce(dbSearch, 500);
 
+  const addUserMutation = trpc.addUser.useMutation();
+
   const initQuery = trpc.initDbs.useQuery(undefined, {
     enabled: false,
     retry: 2,
@@ -77,9 +79,8 @@ export const HomePage = () => {
       return;
     }
     try {
-      const mutation = trpc.addUser.useMutation();
-      const newUser = await mutation.mutateAsync({ email, pass })
-      setNewUserDisplay(JSON.stringify(newUser, null, 2))
+      const newUser = await addUserMutation.mutateAsync({ email, pass });
+      setNewUserDisplay(JSON.stringify(newUser, null, 2));
     } catch (e) {
       console.error(e);
       setNewUserDisplay("Error occurred");
@@ -141,20 +142,24 @@ export const HomePage = () => {
         Users: {isUsersLoading ? "Loading..." : JSON.stringify(users, null, 2)}
       </p>
       <input
-	type="text"
-	value={newUserEmail}
+        type="text"
+        value={newUserEmail}
         onChange={(e) => changeText(setNewUserEmail, e)}
       />
       <input
-	type={showPassword ? "text" : "password"}
-	value={newUserPassword}
-	onChange={(e) => changeText(setNewUserPassword, e)}
+        type={showPassword ? "text" : "password"}
+        value={newUserPassword}
+        onChange={(e) => changeText(setNewUserPassword, e)}
       />
       <button type="button" onClick={togglePasswordVisibility}>
-        {showPassword ? 'Hide' : 'Show'} Password
+        {showPassword ? "Hide" : "Show"} Password
       </button>
-      <button type="button" disabled={!(newUserEmail.length > 0 && newUserPassword.length > 0)} onClick={() => addNewUser(newUserEmail, newUserPassword)}>
-	Submit user info
+      <button
+        type="button"
+        disabled={!(newUserEmail.length > 0 && newUserPassword.length > 0)}
+        onClick={() => addNewUser(newUserEmail, newUserPassword)}
+      >
+        Submit user info
       </button>
       <p>New User: {newUserDisplay}</p>
     </>
