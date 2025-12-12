@@ -2,6 +2,11 @@ use deadpool_postgres::{ManagerConfig, Pool, RecyclingMethod};
 use napi_derive::napi;
 use tokio::sync::OnceCell;
 use tokio_postgres::{NoTls, Row};
+use argon2::{
+    Argon2, password_hash::{
+        PasswordHash, PasswordHasher, SaltString, rand_core
+    }
+};
 
 #[napi(object)]
 pub struct User {
@@ -167,6 +172,8 @@ pub async fn add_user(
         .await
         .map_err(|e| napi::Error::from_reason(format!("Failed to prepare cached: {e}")))?;
     let value_to_bind = if pass.is_some() {
+        let thash = pass.unwrap();
+        let salt = SaltString::generate(&mut rand_core::OsRng);
         pass.as_ref().unwrap()
     } else {
         oauth_provider.as_ref().unwrap()

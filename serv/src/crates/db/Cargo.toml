@@ -8,6 +8,7 @@ build = "build.rs"
 crate-type = ["cdylib"]
 
 [dependencies]
+argon2 = "0.5.3"
 deadpool-postgres = "0.14.1"
 dotenv = "0.15.0"
 napi = { version = "3.6.1", features = ["async"] }

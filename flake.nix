@@ -24,7 +24,7 @@
 	    docker-compose
 	    rootlesskit
 	    postgresql
-	    cargo
+	    rustup
           ];
           shellHook = ''
             echo "Node: $(node --version)"
@@ -83,6 +83,8 @@
               echo "FAILED"
               echo "Warning: Docker may not be ready yet"
             fi
+
+	    rustup default stable
             
             echo ""
             echo "--- Database Options ---"
