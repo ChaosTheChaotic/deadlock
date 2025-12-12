@@ -153,7 +153,7 @@ export const HomePage = () => {
       <button type="button" onClick={togglePasswordVisibility}>
         {showPassword ? 'Hide' : 'Show'} Password
       </button>
-      <button type="button" onClick={() => addNewUser(newUserEmail, newUserPassword)}>
+      <button type="button" disabled={!(newUserEmail.length > 0 && newUserPassword.length > 0)} onClick={() => addNewUser(newUserEmail, newUserPassword)}>
 	Submit user info
       </button>
       <p>New User: {newUserDisplay}</p>
