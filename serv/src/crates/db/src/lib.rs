@@ -58,34 +58,3 @@ pub fn get_grids_pool() -> &'static Pool {
         .get()
         .expect("Database pool not initialized. Call initialize_db() first.")
 }
-
-#[napi]
-pub async fn connect_db() -> napi::Result<String> {
-    // Test connection
-    let ui_client = get_uidb_pool()
-        .get()
-        .await
-        .map_err(|e| napi::Error::from_reason(format!("Failed to get client from pool: {}", e)))?;
-
-    // Execute a simple query to verify connection
-    let ui_rows = ui_client
-        .query("SELECT 1", &[])
-        .await
-        .map_err(|e| napi::Error::from_reason(format!("Query failed: {}", e)))?;
-
-    let grids_client = get_grids_pool()
-        .get()
-        .await
-        .map_err(|e| napi::Error::from_reason(format!("Failed to get client from pool: {e}")))?;
-    let grid_rows = grids_client
-        .query("SELECT 1", &[])
-        .await
-        .map_err(|e| napi::Error::from_reason(format!("Query failed: {e}")))?;
-
-    Ok(format!(
-        "Connected successfully. Test query of user info db and grids db returned: {} and {} row(s) respectively",
-        ui_rows.len(),
-        grid_rows.len()
-    ))
-}
-
