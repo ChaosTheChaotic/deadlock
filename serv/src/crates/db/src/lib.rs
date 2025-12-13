@@ -6,15 +6,7 @@ use deadpool_postgres::{ManagerConfig, Pool, RecyclingMethod};
 use napi_derive::napi;
 use tokio::sync::OnceCell;
 use tokio_postgres::{NoTls, Row};
-
-#[napi(object)]
-pub struct User {
-    pub uid: String,
-    pub email: String,
-    pub pwd_hash: Option<String>,
-    pub oauth_provider: Option<String>,
-    pub create_time: f64,
-}
+use shared_types::User;
 
 static DB_POOL_USERS: OnceCell<Pool> = OnceCell::const_new();
 static DB_POOL_GRIDS: OnceCell<Pool> = OnceCell::const_new();

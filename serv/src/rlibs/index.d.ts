@@ -7,7 +7,6 @@ export declare function connectDb(): Promise<string>
 export declare function initializeDbs(): Promise<void>
 
 export declare function searchUsers(emailStr: string): Promise<Array<User>>
-
 export interface User {
   uid: string
   email: string
