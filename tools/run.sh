@@ -9,7 +9,7 @@ source $ABP/utils.sh
 # Check setup
 check_common_deps
 
-if [ ! -d "$PR/web/node_modules" ] || [ ! -d "$PR/serv/node_modules" ] || [ ! -d "$PR/serv/src/crates/db/node_modules" ]; then
+if [ ! -d "$PR/web/node_modules" ] || [ ! -d "$PR/serv/node_modules" ] || [ ! -d "$PR/serv/src/crates/napi_exports/node_modules" ]; then
     read -p "Setup is not complete, would you like to setup through the script? (Y/n): " yn
     yn=${yn:-y}
     case "$yn" in
@@ -34,16 +34,7 @@ fi
 cd $PR/web
 pnpm build && echo "Sucessfully built the web" || fatal "Failed to build web"
 
-CRATES="${PR%/}/serv/src/crates"
-
-for dir in "$CRATES"/*/; do
-  dirn="${dir%/}"
-  if [ -d "$dirn/node_modules" ]; then
-    (cd "$dirn" && pnpm build && echo "Built $dirn" || echo "Failed to build $dirn")
-  else
-    warn "$dirn has no node_modules. Skipping"
-  fi
-done
+cd $PR/serv/src/crates/napi_exports && pnpm build && echo "Built the napi rust exports" || fatal "Failed to build napi rust exports"
 
 cd $PR/serv
 pnpm build && echo "Successfully built server" || fatal "Failed to build server"

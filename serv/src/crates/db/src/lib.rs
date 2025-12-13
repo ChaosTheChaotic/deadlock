@@ -1,10 +1,6 @@
 use deadpool_postgres::{ManagerConfig, Pool, RecyclingMethod};
-use napi_derive::napi;
-use tokio::sync::OnceCell;
 use tokio_postgres::NoTls;
-
-static DB_POOL_USERS: OnceCell<Pool> = OnceCell::const_new();
-static DB_POOL_GRIDS: OnceCell<Pool> = OnceCell::const_new();
+use shared_types::{DB_POOL_GRIDS, DB_POOL_USERS};
 
 async fn init_db_pool(dbname: &str) -> Result<Pool, String> {
     dotenv::dotenv().ok();
@@ -37,7 +33,6 @@ async fn init_db_pool(dbname: &str) -> Result<Pool, String> {
         .map_err(|e| format!("Failed to create pool: {}", e))
 }
 
-#[napi]
 pub async fn initialize_dbs() {
     DB_POOL_USERS
         .get_or_init(|| async { init_db_pool("uidb").await.expect("Failed to init db pool") })

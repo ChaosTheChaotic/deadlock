@@ -1,0 +1,13 @@
+{
+  "package": "serv-napi_exports",
+  "napi": {
+    "binaryName": "napi_exports"
+  },
+  "scripts": {
+    "build": "napi build --release -o ../../rlibs",
+    "build:debug": "napi build -o ../../rlibs"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^3.5.0"
+  }
+}

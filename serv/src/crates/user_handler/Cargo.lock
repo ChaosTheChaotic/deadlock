@@ -136,9 +136,6 @@ dependencies = [
  "argon2",
  "deadpool-postgres",
  "dotenv",
- "napi",
- "napi-build",
- "napi-derive",
  "rand_core 0.6.4",
  "shared_types",
  "tokio",
@@ -770,8 +767,10 @@ dependencies = [
 name = "shared_types"
 version = "0.1.0"
 dependencies = [
+ "deadpool-postgres",
  "napi",
  "napi-derive",
+ "tokio",
  "tokio-postgres",
 ]
 
@@ -976,7 +975,6 @@ dependencies = [
  "argon2",
  "db",
  "napi",
- "napi-build",
  "napi-derive",
  "rand_core 0.6.4",
  "shared_types",
