@@ -38,7 +38,11 @@ CRATES="${PR%/}/serv/src/crates"
 
 for dir in "$CRATES"/*/; do
   dirn="${dir%/}"
-  (cd "$dirn" && pnpm build && echo "Built $dirn" || echo "Failed to build $dirn")
+  if [ -d "$dirn/node_modules" ]; then
+    (cd "$dirn" && pnpm build && echo "Built $dirn" || echo "Failed to build $dirn")
+  else
+    warn "$dirn has no node_modules. Skipping"
+  fi
 done
 
 cd $PR/serv

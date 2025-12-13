@@ -7,6 +7,12 @@ function fatal() {
   exit 1
 }
 
+function warn() {
+  local msg=$1
+
+  printf "[WARN]: %s" "$msg"
+}
+
 function check_installed() {
   local cmd=$1
 

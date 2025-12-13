@@ -35,8 +35,6 @@ export const HomePage = () => {
 
   const addUserMutation = trpc.addUser.useMutation();
 
-  const addUserMutation = trpc.addUser.useMutation();
-
   const initQuery = trpc.initDbs.useQuery(undefined, {
     enabled: false,
     retry: 2,

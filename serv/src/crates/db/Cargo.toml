@@ -16,6 +16,7 @@ napi-derive = "3.4.0"
 rand_core = { version = "0.6.4", features = ["getrandom"] }
 tokio = "1.48.0"
 tokio-postgres = "0.7.15"
+shared_types = { path = "../shared_types" }
 
 [build-dependencies]
 napi-build = "2.3.1"
