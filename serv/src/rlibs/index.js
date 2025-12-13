@@ -3,9 +3,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const req = createRequire(import.meta.url);
+const utildirn = path.dirname(fileURLToPath(import.meta.url))
 
-const bp = path.join(path.dirname(fileURLToPath(import.meta.url)), "db.node");
-
-const binding = req(bp);
-
-export const { initializeDbs, connectDb, searchUsers, addUser } = binding;
+const ebp = path.join(utildirn, "napi_exports.node");
+const ebinding = req(ebp);
+export const { initDbs, searchUsers, createUser } = ebinding;

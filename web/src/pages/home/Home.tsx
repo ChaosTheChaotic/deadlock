@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useState, type ChangeEvent } from "react";
 import { useDebounce } from "../../hooks/useDebounce";
 import { trpc } from "../../servs/client";
 import "./Home.css";
@@ -13,11 +13,6 @@ export const HomePage = () => {
   const [search, setSearch] = useState({
     text: "",
     db: "",
-  });
-
-  const [initialization, setInitialization] = useState({
-    isInitialized: false,
-    error: null as string | null,
   });
 
   const [userForm, setUserForm] = useState<UserFormData>({
@@ -35,13 +30,6 @@ export const HomePage = () => {
 
   const addUserMutation = trpc.addUser.useMutation();
 
-  const initQuery = trpc.initDbs.useQuery(undefined, {
-    enabled: false,
-    retry: 2,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
-  });
-
   const { data: textData, isLoading: isTextLoading } = trpc.hello.useQuery(
     { name: debouncedText },
     {
@@ -50,39 +38,12 @@ export const HomePage = () => {
     },
   );
 
-  const { data: statusData, isLoading: isStatusLoading } =
-    trpc.connectDB.useQuery(undefined, {
-      enabled: initialization.isInitialized,
-      refetchInterval: false,
-    });
-
   const { data: users, isLoading: isUsersLoading } = trpc.searchUsers.useQuery(
     { email: debouncedDB },
     {
-      enabled: initialization.isInitialized && debouncedDB.length > 0,
+      enabled: debouncedDB.length > 0,
     },
   );
-
-  useEffect(() => {
-    const initDatabase = async () => {
-      try {
-        await initQuery.refetch();
-        setInitialization((prev) => ({
-          ...prev,
-          isInitialized: true,
-          error: null,
-        }));
-      } catch (error) {
-        setInitialization((prev) => ({
-          ...prev,
-          error: "Failed to initialize database",
-        }));
-        console.error("Database initialization error:", error);
-      }
-    };
-
-    initDatabase();
-  }, []);
 
   const handleInputChange = (
     field: keyof typeof search | keyof UserFormData,
@@ -125,40 +86,12 @@ export const HomePage = () => {
     }
   };
 
-  const handleRetryInitialization = () => {
-    window.location.reload();
-  };
-
   const canSubmitUser =
     userForm.email.length > 0 && userForm.password.length > 0;
-
-  const databaseStatusMessage = initQuery.isLoading
-    ? "Initializing..."
-    : initialization.error
-      ? `Error: ${initialization.error}`
-      : !initialization.isInitialized
-        ? "Not Initialized"
-        : isStatusLoading
-          ? "Connecting..."
-          : statusData || "Connected";
 
   return (
     <div className="home-page">
       <h1>The test home page</h1>
-
-      {/* Database Status Section */}
-      <section className="database-status" style={{ marginBottom: "1rem" }}>
-        <p>Database Status: {databaseStatusMessage}</p>
-        {initialization.error && (
-          <button
-            onClick={handleRetryInitialization}
-            className="retry-button"
-            style={{ padding: "0.5rem 1rem", marginTop: "0.5rem" }}
-          >
-            Retry Initialization
-          </button>
-        )}
-      </section>
 
       {/* Text Input Section */}
       <section className="text-input-section">
@@ -185,12 +118,7 @@ export const HomePage = () => {
           type="text"
           value={search.db}
           onChange={(e) => handleInputChange("db", e)}
-          disabled={!initialization.isInitialized}
-          placeholder={
-            !initialization.isInitialized
-              ? "Database initializing..."
-              : "Search users by email"
-          }
+          placeholder={"Search users by email"}
           className="search-input"
         />
         <p>

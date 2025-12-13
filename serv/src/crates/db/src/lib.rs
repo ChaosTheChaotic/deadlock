@@ -1,15 +1,6 @@
-use argon2::{
-    Argon2,
-    password_hash::{PasswordHasher, SaltString},
-};
 use deadpool_postgres::{ManagerConfig, Pool, RecyclingMethod};
-use napi_derive::napi;
-use tokio::sync::OnceCell;
-use tokio_postgres::{NoTls, Row};
-use shared_types::User;
-
-static DB_POOL_USERS: OnceCell<Pool> = OnceCell::const_new();
-static DB_POOL_GRIDS: OnceCell<Pool> = OnceCell::const_new();
+use tokio_postgres::NoTls;
+use shared_types::{DB_POOL_GRIDS, DB_POOL_USERS};
 
 async fn init_db_pool(dbname: &str) -> Result<Pool, String> {
     dotenv::dotenv().ok();
@@ -42,7 +33,6 @@ async fn init_db_pool(dbname: &str) -> Result<Pool, String> {
         .map_err(|e| format!("Failed to create pool: {}", e))
 }
 
-#[napi]
 pub async fn initialize_dbs() {
     DB_POOL_USERS
         .get_or_init(|| async { init_db_pool("uidb").await.expect("Failed to init db pool") })
@@ -62,151 +52,4 @@ pub fn get_grids_pool() -> &'static Pool {
     DB_POOL_GRIDS
         .get()
         .expect("Database pool not initialized. Call initialize_db() first.")
-}
-
-#[napi]
-pub async fn connect_db() -> napi::Result<String> {
-    // Test connection
-    let ui_client = get_uidb_pool()
-        .get()
-        .await
-        .map_err(|e| napi::Error::from_reason(format!("Failed to get client from pool: {}", e)))?;
-
-    // Execute a simple query to verify connection
-    let ui_rows = ui_client
-        .query("SELECT 1", &[])
-        .await
-        .map_err(|e| napi::Error::from_reason(format!("Query failed: {}", e)))?;
-
-    let grids_client = get_grids_pool()
-        .get()
-        .await
-        .map_err(|e| napi::Error::from_reason(format!("Failed to get client from pool: {e}")))?;
-    let grid_rows = grids_client
-        .query("SELECT 1", &[])
-        .await
-        .map_err(|e| napi::Error::from_reason(format!("Query failed: {e}")))?;
-
-    Ok(format!(
-        "Connected successfully. Test query of user info db and grids db returned: {} and {} row(s) respectively",
-        ui_rows.len(),
-        grid_rows.len()
-    ))
-}
-
-pub fn user_from_row(row: Row) -> User {
-    User {
-        uid: row.get("uid"),
-        email: row.get("email"),
-        pwd_hash: row.get("password_hash"),
-        oauth_provider: row.get("oauth_provider"),
-        create_time: row.get::<_, f64>("creation_time"),
-    }
-}
-
-#[napi]
-pub async fn search_users(email_str: String) -> napi::Result<Vec<User>> {
-    let client = get_uidb_pool()
-        .get()
-        .await
-        .map_err(|e| napi::Error::from_reason(format!("Failed to get client from pool: {e}")))?;
-
-    // Use parameterized query to prevent SQL injection
-    let stmt = client
-        .prepare_cached(
-            "SELECT 
-                uid::text as uid, 
-                email, 
-                password_hash, 
-                oauth_provider, 
-                date_part('epoch', creation_time) as creation_time
-             FROM users 
-             WHERE email ILIKE $1",
-        )
-        .await
-        .map_err(|e| napi::Error::from_reason(format!("Failed to prepare cached: {e}")))?;
-
-    // Execute query with parameter
-    let rows = client
-        .query(&stmt, &[&format!("%{}%", email_str)])
-        .await
-        .map_err(|e| napi::Error::from_reason(format!("Failed to execute query: {e}")))?;
-
-    // Map rows to User structs
-    let users: Vec<User> = rows.into_iter().map(|row| user_from_row(row)).collect();
-
-    Ok(users)
-}
-
-#[napi]
-pub async fn add_user(
-    email: String,
-    pass: Option<String>,
-    oauth_provider: Option<String>,
-) -> napi::Result<User> {
-    if pass.is_none() && oauth_provider.is_none() {
-        return Err(napi::Error::from_status(napi::Status::InvalidArg));
-    }
-
-    let client = get_uidb_pool()
-        .get()
-        .await
-        .map_err(|e| napi::Error::from_reason(format!("Failed to get client from pool: {e}")))?;
-
-    if let Some(password) = pass {
-        // Hash the password with Argon2
-        let salt = SaltString::generate(&mut rand_core::OsRng);
-        let argon2 = Argon2::default();
-        let password_hash = argon2
-            .hash_password(password.as_bytes(), &salt)
-            .map_err(|e| napi::Error::from_reason(format!("Failed to hash password: {e}")))?
-            .to_string();
-
-        // Prepare and execute insert statement for password-based user
-        let stmt = client
-            .prepare_cached(
-                "INSERT INTO users (email, password_hash) VALUES ($1, $2) 
-                 RETURNING 
-                    uid::text as uid, 
-                    email, 
-                    password_hash, 
-                    oauth_provider, 
-                    date_part('epoch', creation_time) as creation_time",
-            )
-            .await
-            .map_err(|e| napi::Error::from_reason(format!("Failed to prepare cached: {e}")))?;
-
-        let row = client
-            .query_one(&stmt, &[&email, &password_hash])
-            .await
-            .map_err(|e| {
-                napi::Error::from_reason(format!("Failed to execute insert statement: {e}"))
-            })?;
-
-        Ok(user_from_row(row))
-    } else {
-        let provider = oauth_provider.as_ref().unwrap();
-
-        let stmt = client
-            .prepare_cached(
-                "INSERT INTO users (email, oauth_provider) VALUES ($1, $2) 
-                 RETURNING 
-                    uid::text as uid, 
-                    email, 
-                    password_hash, 
-                    oauth_provider, 
-                    date_part('epoch', creation_time) as creation_time",
-            )
-            .await
-            .map_err(|e| napi::Error::from_reason(format!("Failed to prepare cached: {e}")))?;
-
-        let row = client
-            .query_one(&stmt, &[&email, provider])
-            .await
-            .map_err(|e| {
-                napi::Error::from_reason(format!("Failed to execute insert statement: {e}"))
-            })?;
-
-        Ok(user_from_row(row))
-    }
 }

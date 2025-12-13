@@ -1,0 +1,18 @@
+[package]
+name = "napi_exports"
+version = "0.1.0"
+edition = "2024"
+build = "build.rs"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+db = { path = "../db" }
+user_handler = { path = "../user_handler" }
+shared_types = { path = "../shared_types" }
+napi-derive = "3.4.0"
+napi = { version = "3.7.0", features = ["async"] }
+
+[build-dependencies]
+napi-build = "2.3.1"
