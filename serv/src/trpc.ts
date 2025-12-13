@@ -1,6 +1,6 @@
 import { initTRPC } from "@trpc/server";
 import { z } from "zod";
-import { addUser, connectDb, searchUsers } from "./rlibs/index";
+import { addUser, searchUsers } from "./rlibs/index";
 
 export const t = initTRPC.create();
 
@@ -10,9 +10,6 @@ export const appRouter = t.router({
     .query(({ input }) => {
       return `Hello, ${input.name ?? "world"}!`;
     }),
-  connectDB: t.procedure.query(async () => {
-    return await connectDb();
-  }),
   searchUsers: t.procedure
     .input(z.object({ email: z.string() }))
     .query(async ({ input }) => {
