@@ -3,18 +3,35 @@ import { useDebounce } from "../../hooks/useDebounce";
 import { trpc } from "../../servs/client";
 import "./Home.css";
 
-export const HomePage = () => {
-  const [text, setText] = useState("");
-  const [dbSearch, setDBSearch] = useState("");
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [initError, setInitError] = useState<string | null>(null);
-  const [newUserEmail, setNewUserEmail] = useState("");
-  const [newUserPassword, setNewUserPassword] = useState("");
-  const [newUserDisplay, setNewUserDisplay] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+type UserFormData = {
+  email: string;
+  password: string;
+  display: string;
+};
 
-  const debouncedText = useDebounce(text, 500);
-  const debouncedDB = useDebounce(dbSearch, 500);
+export const HomePage = () => {
+  const [search, setSearch] = useState({
+    text: "",
+    db: "",
+  });
+
+  const [initialization, setInitialization] = useState({
+    isInitialized: false,
+    error: null as string | null,
+  });
+
+  const [userForm, setUserForm] = useState<UserFormData>({
+    email: "",
+    password: "",
+    display: "",
+  });
+
+  const [uiState, setUiState] = useState({
+    showPassword: false,
+  });
+
+  const debouncedText = useDebounce(search.text, 500);
+  const debouncedDB = useDebounce(search.db, 500);
 
   const addUserMutation = trpc.addUser.useMutation();
 
@@ -24,22 +41,6 @@ export const HomePage = () => {
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   });
-
-  useEffect(() => {
-    // Trigger initialization on component mount
-    const initDatabase = async () => {
-      try {
-        await initQuery.refetch();
-        setIsInitialized(true);
-        setInitError(null);
-      } catch (error) {
-        setInitError("Failed to initialize database");
-        console.error("Database initialization error:", error);
-      }
-    };
-
-    initDatabase();
-  }, []);
 
   const { data: textData, isLoading: isTextLoading } = trpc.hello.useQuery(
     { name: debouncedText },
@@ -51,117 +52,196 @@ export const HomePage = () => {
 
   const { data: statusData, isLoading: isStatusLoading } =
     trpc.connectDB.useQuery(undefined, {
-      enabled: isInitialized,
+      enabled: initialization.isInitialized,
       refetchInterval: false,
     });
 
   const { data: users, isLoading: isUsersLoading } = trpc.searchUsers.useQuery(
     { email: debouncedDB },
     {
-      enabled: isInitialized && debouncedDB.length > 0,
+      enabled: initialization.isInitialized && debouncedDB.length > 0,
     },
   );
 
-  async function changeText(
-    callback: React.Dispatch<React.SetStateAction<string>>,
-    e: ChangeEvent<HTMLInputElement>,
-  ) {
-    callback(e.target.value);
-  }
+  useEffect(() => {
+    const initDatabase = async () => {
+      try {
+        await initQuery.refetch();
+        setInitialization((prev) => ({
+          ...prev,
+          isInitialized: true,
+          error: null,
+        }));
+      } catch (error) {
+        setInitialization((prev) => ({
+          ...prev,
+          error: "Failed to initialize database",
+        }));
+        console.error("Database initialization error:", error);
+      }
+    };
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
+    initDatabase();
+  }, []);
+
+  const handleInputChange = (
+    field: keyof typeof search | keyof UserFormData,
+    e: ChangeEvent<HTMLInputElement>,
+  ) => {
+    if (field in search) {
+      setSearch((prev) => ({ ...prev, [field]: e.target.value }));
+    } else {
+      setUserForm((prev) => ({ ...prev, [field]: e.target.value }));
+    }
   };
 
-  async function addNewUser(email: string, pass: string) {
-    if (!email || !pass) {
-      setNewUserDisplay("Error: Email and password are required");
+  const togglePasswordVisibility = () => {
+    setUiState((prev) => ({ ...prev, showPassword: !prev.showPassword }));
+  };
+
+  const handleAddUser = async () => {
+    const { email, password } = userForm;
+
+    if (!email.trim() || !password.trim()) {
+      setUserForm((prev) => ({
+        ...prev,
+        display: "Error: Email and password are required",
+      }));
       return;
     }
+
     try {
-      const newUser = await addUserMutation.mutateAsync({ email, pass });
-      setNewUserDisplay(JSON.stringify(newUser, null, 2));
-    } catch (e) {
-      console.error(e);
-      setNewUserDisplay("Error occurred");
+      const newUser = await addUserMutation.mutateAsync({
+        email,
+        pass: password,
+      });
+      setUserForm((prev) => ({
+        ...prev,
+        display: JSON.stringify(newUser, null, 2),
+      }));
+    } catch (error) {
+      console.error("Add user error:", error);
+      setUserForm((prev) => ({ ...prev, display: "Error occurred" }));
     }
-  }
+  };
+
+  const handleRetryInitialization = () => {
+    window.location.reload();
+  };
+
+  const canSubmitUser =
+    userForm.email.length > 0 && userForm.password.length > 0;
+
+  const databaseStatusMessage = initQuery.isLoading
+    ? "Initializing..."
+    : initialization.error
+      ? `Error: ${initialization.error}`
+      : !initialization.isInitialized
+        ? "Not Initialized"
+        : isStatusLoading
+          ? "Connecting..."
+          : statusData || "Connected";
 
   return (
-    <>
+    <div className="home-page">
       <h1>The test home page</h1>
 
-      <div style={{ marginBottom: "1rem" }}>
-        <p>
-          Database Status:
-          {initQuery.isLoading
-            ? "Initializing..."
-            : initError
-              ? `Error: ${initError}`
-              : !isInitialized
-                ? "Not Initialized"
-                : isStatusLoading
-                  ? "Connecting..."
-                  : statusData || "Connected"}
-        </p>
-        {initError && (
+      {/* Database Status Section */}
+      <section className="database-status" style={{ marginBottom: "1rem" }}>
+        <p>Database Status: {databaseStatusMessage}</p>
+        {initialization.error && (
           <button
-            onClick={() => window.location.reload()}
+            onClick={handleRetryInitialization}
+            className="retry-button"
             style={{ padding: "0.5rem 1rem", marginTop: "0.5rem" }}
           >
             Retry Initialization
           </button>
         )}
-      </div>
+      </section>
 
-      <form>
-        <label>
-          Enter some text:
+      {/* Text Input Section */}
+      <section className="text-input-section">
+        <form>
+          <label>
+            Enter some text:
+            <input
+              type="text"
+              value={search.text}
+              onChange={(e) => handleInputChange("text", e)}
+              className="text-input"
+            />
+          </label>
+          <p>Text: {search.text}</p>
+          <p>Debounced: {debouncedText}</p>
+          <p>Resp: {isTextLoading ? "Loading..." : textData}</p>
+        </form>
+      </section>
+
+      {/* User Search Section */}
+      <section className="user-search-section">
+        <h2>Search DB:</h2>
+        <input
+          type="text"
+          value={search.db}
+          onChange={(e) => handleInputChange("db", e)}
+          disabled={!initialization.isInitialized}
+          placeholder={
+            !initialization.isInitialized
+              ? "Database initializing..."
+              : "Search users by email"
+          }
+          className="search-input"
+        />
+        <p>
+          Users:{" "}
+          {isUsersLoading ? "Loading..." : JSON.stringify(users, null, 2)}
+        </p>
+      </section>
+
+      {/* New User Form Section */}
+      <section className="new-user-form">
+        <h3>Add New User</h3>
+        <div className="form-group">
           <input
             type="text"
-            value={text}
-            onChange={(e) => changeText(setText, e)}
+            value={userForm.email}
+            onChange={(e) => handleInputChange("email", e)}
+            placeholder="Email"
+            className="form-input"
           />
-        </label>
-        <p>Text: {text}</p>
-        <p>Debounced: {debouncedText}</p>
-        <p>Resp: {isTextLoading ? "Loading..." : textData}</p>
-      </form>
+        </div>
 
-      <h2>Search DB:</h2>
-      <input
-        type="text"
-        value={dbSearch}
-        onChange={(e) => changeText(setDBSearch, e)}
-        disabled={!isInitialized}
-        placeholder={
-          !isInitialized ? "Database initializing..." : "Search users by email"
-        }
-      />
-      <p>
-        Users: {isUsersLoading ? "Loading..." : JSON.stringify(users, null, 2)}
-      </p>
-      <input
-        type="text"
-        value={newUserEmail}
-        onChange={(e) => changeText(setNewUserEmail, e)}
-      />
-      <input
-        type={showPassword ? "text" : "password"}
-        value={newUserPassword}
-        onChange={(e) => changeText(setNewUserPassword, e)}
-      />
-      <button type="button" onClick={togglePasswordVisibility}>
-        {showPassword ? "Hide" : "Show"} Password
-      </button>
-      <button
-        type="button"
-        disabled={!(newUserEmail.length > 0 && newUserPassword.length > 0)}
-        onClick={() => addNewUser(newUserEmail, newUserPassword)}
-      >
-        Submit user info
-      </button>
-      <p>New User: {newUserDisplay}</p>
-    </>
+        <div className="form-group password-group">
+          <input
+            type={uiState.showPassword ? "text" : "password"}
+            value={userForm.password}
+            onChange={(e) => handleInputChange("password", e)}
+            placeholder="Password"
+            className="form-input"
+          />
+          <button
+            type="button"
+            onClick={togglePasswordVisibility}
+            className="toggle-password"
+          >
+            {uiState.showPassword ? "Hide" : "Show"} Password
+          </button>
+        </div>
+
+        <button
+          type="button"
+          disabled={!canSubmitUser}
+          onClick={handleAddUser}
+          className="submit-button"
+        >
+          Submit user info
+        </button>
+
+        {userForm.display && (
+          <pre className="user-display">New User: {userForm.display}</pre>
+        )}
+      </section>
+    </div>
   );
 };
