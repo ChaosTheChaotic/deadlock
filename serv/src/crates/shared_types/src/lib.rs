@@ -1,4 +1,5 @@
 use napi_derive::napi;
+pub use tokio_postgres::Row;
 
 #[napi(object)]
 pub struct User {

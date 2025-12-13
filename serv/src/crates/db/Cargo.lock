@@ -772,6 +772,7 @@ version = "0.1.0"
 dependencies = [
  "napi",
  "napi-derive",
+ "tokio-postgres",
 ]
 
 [[package]]

@@ -9,3 +9,4 @@ crate-type = ["rlib"]
 [dependencies]
 napi = "3.7.0"
 napi-derive = "3.4.0"
+tokio-postgres = "0.7.15"
