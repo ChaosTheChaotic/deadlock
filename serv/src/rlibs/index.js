@@ -4,8 +4,9 @@ import { fileURLToPath } from "url";
 
 const req = createRequire(import.meta.url);
 
-const bp = path.join(path.dirname(fileURLToPath(import.meta.url)), "db.node");
+const bp = path.join(path.dirname(fileURLToPath(import.meta.url)), "db");
+const dbn = path.join(bp, "db.node");
 
-const binding = req(bp);
+const dbinding = req(dbn);
 
-export const { initializeDbs, connectDb, searchUsers, addUser } = binding;
+export const { initializeDbs, connectDb, searchUsers, addUser } = dbinding;
