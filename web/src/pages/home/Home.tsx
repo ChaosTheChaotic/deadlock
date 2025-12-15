@@ -1,8 +1,8 @@
 import { useState, type ChangeEvent } from "react";
-import { useDebounce } from "../../hooks/useDebounce";
-import { trpc } from "../../servs/client";
+import { useDebounce } from "@hooks/useDebounce";
+import { trpc } from "@servs/client";
 import "./Home.css";
-import type { User } from "../../../../serv/src/rlibs";
+import type { User } from "@serv/rlibs";
 
 type UserFormData = {
   email: string;
