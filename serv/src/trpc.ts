@@ -1,6 +1,6 @@
 import { initTRPC } from "@trpc/server";
 import { z } from "zod";
-import { timeDiff } from "./rlibs/index.js";
+import { createUser, searchUsers, deleteUser, checkPass } from "./rlibs/index";
 
 export const t = initTRPC.create();
 
@@ -10,10 +10,31 @@ export const appRouter = t.router({
     .query(({ input }) => {
       return `Hello, ${input.name ?? "world"}!`;
     }),
-  timeDiff: t.procedure
-    .input(z.object({ msg: z.string() }))
-    .query(({ input }) => {
-      return timeDiff(input.msg);
+  searchUsers: t.procedure
+    .input(z.object({ email: z.string() }))
+    .query(async ({ input }) => {
+      return await searchUsers(input.email);
+    }),
+  checkPass: t.procedure
+    .input(z.object({ email: z.string(), pass: z.string() }))
+    .query(async ({ input }) => {
+      return await checkPass(input.email, input.pass);
+    }),
+  addUser: t.procedure
+    .input(
+      z.object({
+        email: z.string(),
+        pass: z.string().optional(),
+        oauthProvider: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      return await createUser(input.email, input.pass, input.oauthProvider);
+    }),
+  deleteUser: t.procedure
+    .input(z.object({ email: z.string() }))
+    .mutation(async ({ input }) => {
+      return await deleteUser(input.email);
     }),
 });
 

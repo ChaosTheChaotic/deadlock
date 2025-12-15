@@ -5,8 +5,6 @@ POSTGRES_USER="${POSTGRES_USER:-postgres}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-}"
 POSTGRES_DB="${POSTGRES_DB:-postgres}"
 
-SOCKET_DIR="/var/run/postgresql"
-
 echo "Waiting for PostgreSQL to be ready..."
 
 # Use the postgres default database for initial connection
@@ -43,11 +41,11 @@ CREATE EXTENSION IF NOT EXISTS citext;
 
 -- Create Users table if not exists
 CREATE TABLE IF NOT EXISTS public.Users (
-  UserID UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  uid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   Email CITEXT UNIQUE NOT NULL,
-  PasswordHash TEXT NULL,
-  OAuthProvider VARCHAR(50) NULL,
-  CreationTime TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  Password_Hash TEXT NULL,
+  OAuth_Provider VARCHAR(50) NULL,
+  Creation_Time TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT first_email_check CHECK (
     -- Basic email validation where "@" must not be surrounded with whitespace and there must be a dot in the domain part
     Email ~* '^[^[:space:]]+@[^[:space:]]+\.[^[:space:]]+$'
@@ -60,39 +58,39 @@ echo "Configuring GRIDS database..."
 psql -h /var/run/postgresql -U "$POSTGRES_USER" -d "grids" <<EOF
 -- Create tables if not exists
 CREATE TABLE IF NOT EXISTS public.GRIDS (
-  GridID INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-  GridName VARCHAR(128),
-  GridDesc VARCHAR(255)
+  Grid_ID INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  Grid_Name VARCHAR(128),
+  Grid_Desc VARCHAR(255)
 );
 
 CREATE TABLE IF NOT EXISTS public.Phrases (
-  PhraseID INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-  GridID INT NOT NULL REFERENCES public.Grids(GridID) ON DELETE CASCADE,
-  PhraseOrder INT NOT NULL -- Store order of phrase within grid
+  Phrase_ID INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  Grid_ID INT NOT NULL REFERENCES public.Grids(Grid_ID) ON DELETE CASCADE,
+  Phrase_Order INT NOT NULL -- Store order of phrase within grid
 );
 
 CREATE TABLE IF NOT EXISTS public.Sections (
-  SectionID INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-  PhraseID INT NOT NULL REFERENCES public.Phrases(PhraseID) ON DELETE CASCADE,
-  SectionOrder INT NOT NULL -- Section within phrase
+  Section_ID INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  Phrase_ID INT NOT NULL REFERENCES public.Phrases(Phrase_ID) ON DELETE CASCADE,
+  Section_Order INT NOT NULL -- Section within phrase
 );
 
 CREATE TABLE IF NOT EXISTS public.Terms (
-  TermID INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-  SectionID INT NOT NULL REFERENCES public.Sections(SectionID) ON DELETE CASCADE,
-  EnText TEXT NOT NULL,
-  DeText TEXT NOT NULL
+  Term_ID INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  Section_ID INT NOT NULL REFERENCES public.Sections(Section_ID) ON DELETE CASCADE,
+  En_Text TEXT NOT NULL,
+  De_Text TEXT NOT NULL
 );
 
 -- Create indexes if not exists
 DO \$\$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_terms_en') THEN
-        CREATE INDEX idx_terms_en ON public.Terms(EnText);
+        CREATE INDEX idx_terms_en ON public.Terms(En_Text);
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_terms_de') THEN
-        CREATE INDEX idx_terms_de ON public.Terms(DeText);
+        CREATE INDEX idx_terms_de ON public.Terms(De_Text);
     END IF;
 END
 \$\$;

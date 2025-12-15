@@ -1,0 +1,200 @@
+use db::get_uidb_pool;
+use shared_types::{Row, User};
+use argon2::{
+    Argon2, PasswordHash, PasswordVerifier, password_hash::{
+        PasswordHasher, SaltString
+    }
+};
+
+pub fn user_from_row(row: Row) -> User {
+    User {
+        uid: row.get("uid"),
+        email: row.get("email"),
+        pwd_hash: row.get("password_hash"),
+        oauth_provider: row.get("oauth_provider"),
+        create_time: row.get::<_, f64>("creation_time"),
+    }
+}
+
+pub async fn search_users(email_str: String) -> napi::Result<Vec<User>> {
+    let client = get_uidb_pool()
+        .get()
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to get client from pool: {e}")))?;
+
+    // Use parameterized query to prevent SQL injection
+    let stmt = client
+        .prepare_cached(
+            "SELECT 
+                uid::text as uid, 
+                email, 
+                password_hash, 
+                oauth_provider, 
+                date_part('epoch', creation_time) as creation_time
+             FROM users 
+             WHERE email ILIKE $1",
+        )
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to prepare cached: {e}")))?;
+
+    // Execute query with parameter
+    let rows = client
+        .query(&stmt, &[&format!("%{}%", email_str)])
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to execute query: {e}")))?;
+
+    // Map rows to User structs
+    let users: Vec<User> = rows.into_iter().map(|row| user_from_row(row)).collect();
+
+    Ok(users)
+}
+
+pub async fn add_user(
+    email: String,
+    pass: Option<String>,
+    oauth_provider: Option<String>,
+) -> napi::Result<User> {
+    if pass.is_none() && oauth_provider.is_none() {
+        return Err(napi::Error::from_status(napi::Status::InvalidArg));
+    }
+
+    let client = get_uidb_pool()
+        .get()
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to get client from pool: {e}")))?;
+
+    if let Some(password) = pass {
+        // Hash the password with Argon2
+        let salt = SaltString::generate(&mut rand_core::OsRng);
+        let argon2 = Argon2::default();
+        let password_hash = argon2
+            .hash_password(password.as_bytes(), &salt)
+            .map_err(|e| napi::Error::from_reason(format!("Failed to hash password: {e}")))?
+            .to_string();
+
+        // Prepare and execute insert statement for password-based user
+        let stmt = client
+            .prepare_cached(
+                "INSERT INTO users (email, password_hash) VALUES ($1, $2) 
+                 RETURNING 
+                    uid::text as uid, 
+                    email, 
+                    password_hash, 
+                    oauth_provider, 
+                    date_part('epoch', creation_time) as creation_time",
+            )
+            .await
+            .map_err(|e| napi::Error::from_reason(format!("Failed to prepare cached: {e}")))?;
+
+        let row = client
+            .query_one(&stmt, &[&email, &password_hash])
+            .await
+            .map_err(|e| {
+                napi::Error::from_reason(format!("Failed to execute insert statement: {e}"))
+            })?;
+
+        Ok(user_from_row(row))
+    } else {
+        let provider = oauth_provider.as_ref().unwrap();
+
+        let stmt = client
+            .prepare_cached(
+                "INSERT INTO users (email, oauth_provider) VALUES ($1, $2) 
+                 RETURNING 
+                    uid::text as uid, 
+                    email, 
+                    password_hash, 
+                    oauth_provider, 
+                    date_part('epoch', creation_time) as creation_time",
+            )
+            .await
+            .map_err(|e| napi::Error::from_reason(format!("Failed to prepare cached: {e}")))?;
+
+        let row = client
+            .query_one(&stmt, &[&email, provider])
+            .await
+            .map_err(|e| {
+                napi::Error::from_reason(format!("Failed to execute insert statement: {e}"))
+            })?;
+
+        Ok(user_from_row(row))
+    }
+}
+
+pub async fn validate_pass(email: String, pass: String) -> napi::Result<bool> {
+    let client = get_uidb_pool()
+        .get()
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to get client from pool: {e}")))?;
+
+    let stmt = client
+        .prepare_cached(
+            "SELECT 
+                password_hash
+             FROM users 
+             WHERE email ILIKE $1",
+        )
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to prepare cached: {e}")))?;
+
+    let rows = client
+        .query(&stmt, &[&email])
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to execute query: {e}")))?;
+
+    // If no user found or multiple users found (shouldn't happen with unique email), return false
+    if rows.len() != 1 {
+        return Ok(false);
+    }
+
+    let row = &rows[0];
+    
+    let password_hash: Option<String> = row.get("password_hash");
+    
+    match password_hash {
+        Some(hash) => {
+            let parsed_hash = PasswordHash::new(&hash)
+                .map_err(|e| napi::Error::from_reason(format!("Failed to parse password hash: {e}")))?;
+            
+            // Use Argon2 to verify the password
+            let argon2 = Argon2::default();
+            let is_valid = argon2.verify_password(pass.as_bytes(), &parsed_hash).is_ok();
+            
+            Ok(is_valid)
+        }
+        None => {
+            Ok(false)
+        }
+    }
+}
+
+pub async fn delete_user(email: String) -> napi::Result<User> {
+    let client = get_uidb_pool()
+        .get()
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to get client from pool: {e}")))?;
+
+    let stmt = client
+        .prepare_cached(
+            "DELETE FROM users 
+             WHERE email = $1
+             RETURNING 
+                uid::text as uid, 
+                email, 
+                password_hash, 
+                oauth_provider, 
+                date_part('epoch', creation_time) as creation_time",
+        )
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to prepare cached: {e}")))?;
+
+    let row = client
+        .query_opt(&stmt, &[&email])
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to execute delete statement: {e}")))?;
+
+    match row {
+        Some(row) => Ok(user_from_row(row)),
+        None => Err(napi::Error::from_reason("User not found")),
+    }
+}
