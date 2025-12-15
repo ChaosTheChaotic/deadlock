@@ -15,7 +15,7 @@ async function initializeServer() {
     console.log("Initializing database pools...");
     await initDbs();
     console.log("Database pools initialized successfully");
-    
+
     app.use(
       "/trpc",
       createExpressMiddleware({
@@ -38,4 +38,4 @@ async function initializeServer() {
   }
 }
 
-initializeServer();
+void initializeServer();
