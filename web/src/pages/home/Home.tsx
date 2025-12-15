@@ -2,6 +2,7 @@ import { useState, type ChangeEvent } from "react";
 import { useDebounce } from "../../hooks/useDebounce";
 import { trpc } from "../../servs/client";
 import "./Home.css";
+import type { User } from "../../../../serv/src/rlibs";
 
 type UserFormData = {
   email: string;
@@ -13,7 +14,14 @@ type DeleteUserState = {
   email: string;
   status: "idle" | "success" | "error";
   message: string;
-  deletedUser: any | null;
+  deletedUser: User | null;
+};
+
+type CheckPasswordState = {
+  email: string;
+  password: string;
+  result: string;
+  isLoading: boolean;
 };
 
 export const HomePage = () => {
@@ -35,8 +43,16 @@ export const HomePage = () => {
     deletedUser: null,
   });
 
+  const [checkPassState, setCheckPassState] = useState<CheckPasswordState>({
+    email: "",
+    password: "",
+    result: "",
+    isLoading: false,
+  });
+
   const [uiState, setUiState] = useState({
     showPassword: false,
+    showCheckPassword: false,
   });
 
   const debouncedText = useDebounce(search.text, 500);
@@ -82,8 +98,23 @@ export const HomePage = () => {
     }));
   };
 
+  const handleCheckPassInputChange = (
+    field: keyof Omit<CheckPasswordState, "result" | "isLoading">,
+    e: ChangeEvent<HTMLInputElement>,
+  ) => {
+    setCheckPassState((prev) => ({
+      ...prev,
+      [field]: e.target.value,
+      result: "", // Clear previous result when input changes
+    }));
+  };
+
   const togglePasswordVisibility = () => {
     setUiState((prev) => ({ ...prev, showPassword: !prev.showPassword }));
+  };
+
+  const toggleCheckPasswordVisibility = () => {
+    setUiState((prev) => ({ ...prev, showCheckPassword: !prev.showCheckPassword }));
   };
 
   const handleAddUser = async () => {
@@ -158,10 +189,49 @@ export const HomePage = () => {
     }
   };
 
+  const handleCheckPassword = async () => {
+    const { email, password } = checkPassState;
+
+    if (!email.trim() || !password.trim()) {
+      setCheckPassState((prev) => ({
+        ...prev,
+        result: "Error: Both email and password are required",
+      }));
+      return;
+    }
+
+    setCheckPassState((prev) => ({ ...prev, isLoading: true }));
+
+    try {
+      const result = await utils.client.checkPass.query({ 
+        email, 
+        pass: password 
+      });
+
+      setCheckPassState((prev) => ({
+        ...prev,
+        result: typeof result === 'object' 
+          ? JSON.stringify(result, null, 2)
+          : String(result),
+        isLoading: false,
+      }));
+    } catch (error) {
+      console.error("Check password error:", error);
+      setCheckPassState((prev) => ({
+        ...prev,
+        result: `Error: ${error instanceof Error ? error.message : "Failed to check password"}`,
+        isLoading: false,
+      }));
+    }
+  };
+
   const canSubmitUser =
     userForm.email.length > 0 && userForm.password.length > 0;
 
   const canDeleteUser = deleteState.email.length > 0;
+
+  const canCheckPassword = 
+    checkPassState.email.length > 0 && checkPassState.password.length > 0;
 
   return (
     <div className="home-page">
@@ -283,6 +353,55 @@ export const HomePage = () => {
         {deleteState.status === "error" && (
           <div className="delete-status error">
             <p>{deleteState.message}</p>
+          </div>
+        )}
+      </section>
+
+      {/* Check Password Section */}
+      <section className="check-password-section">
+        <h3>Check a Password</h3>
+        
+        <div className="form-group">
+          <input
+            type="text"
+            value={checkPassState.email}
+            onChange={(e) => handleCheckPassInputChange("email", e)}
+            placeholder="Enter email"
+            className="form-input"
+          />
+        </div>
+
+        <div className="form-group password-group">
+          <input
+            type={uiState.showCheckPassword ? "text" : "password"}
+            value={checkPassState.password}
+            onChange={(e) => handleCheckPassInputChange("password", e)}
+            placeholder="Enter password to check"
+            className="form-input"
+          />
+          <button
+            type="button"
+            onClick={toggleCheckPasswordVisibility}
+            className="toggle-password"
+          >
+            {uiState.showCheckPassword ? "Hide" : "Show"} Password
+          </button>
+        </div>
+
+        <button
+          type="button"
+          disabled={!canCheckPassword || checkPassState.isLoading}
+          onClick={handleCheckPassword}
+          className={`check-button ${checkPassState.isLoading ? 'loading' : ''}`}
+        >
+          {checkPassState.isLoading ? "Checking..." : "Check Password"}
+        </button>
+
+        {/* Check Password Result */}
+        {checkPassState.result && (
+          <div className={`check-result ${checkPassState.result.includes('Error') ? 'error' : 'success'}`}>
+            <h4>Result:</h4>
+            <pre>{checkPassState.result}</pre>
           </div>
         )}
       </section>
