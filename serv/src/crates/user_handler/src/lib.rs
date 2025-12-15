@@ -1,11 +1,8 @@
 use db::get_uidb_pool;
-use napi_derive::napi;
 use shared_types::{Row, User};
 use argon2::{
-    Argon2,
-    password_hash::{
-        SaltString,
-        PasswordHasher,
+    Argon2, PasswordHash, PasswordVerifier, password_hash::{
+        PasswordHasher, SaltString
     }
 };
 
@@ -19,7 +16,6 @@ pub fn user_from_row(row: Row) -> User {
     }
 }
 
-#[napi]
 pub async fn search_users(email_str: String) -> napi::Result<Vec<User>> {
     let client = get_uidb_pool()
         .get()
@@ -53,7 +49,6 @@ pub async fn search_users(email_str: String) -> napi::Result<Vec<User>> {
     Ok(users)
 }
 
-#[napi]
 pub async fn add_user(
     email: String,
     pass: Option<String>,
@@ -123,5 +118,83 @@ pub async fn add_user(
             })?;
 
         Ok(user_from_row(row))
+    }
+}
+
+pub async fn validate_pass(email: String, pass: String) -> napi::Result<bool> {
+    let client = get_uidb_pool()
+        .get()
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to get client from pool: {e}")))?;
+
+    let stmt = client
+        .prepare_cached(
+            "SELECT 
+                password_hash
+             FROM users 
+             WHERE email ILIKE $1",
+        )
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to prepare cached: {e}")))?;
+
+    let rows = client
+        .query(&stmt, &[&email])
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to execute query: {e}")))?;
+
+    // If no user found or multiple users found (shouldn't happen with unique email), return false
+    if rows.len() != 1 {
+        return Ok(false);
+    }
+
+    let row = &rows[0];
+    
+    let password_hash: Option<String> = row.get("password_hash");
+    
+    match password_hash {
+        Some(hash) => {
+            let parsed_hash = PasswordHash::new(&hash)
+                .map_err(|e| napi::Error::from_reason(format!("Failed to parse password hash: {e}")))?;
+            
+            // Use Argon2 to verify the password
+            let argon2 = Argon2::default();
+            let is_valid = argon2.verify_password(pass.as_bytes(), &parsed_hash).is_ok();
+            
+            Ok(is_valid)
+        }
+        None => {
+            Ok(false)
+        }
+    }
+}
+
+pub async fn delete_user(email: String) -> napi::Result<User> {
+    let client = get_uidb_pool()
+        .get()
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to get client from pool: {e}")))?;
+
+    let stmt = client
+        .prepare_cached(
+            "DELETE FROM users 
+             WHERE email = $1
+             RETURNING 
+                uid::text as uid, 
+                email, 
+                password_hash, 
+                oauth_provider, 
+                date_part('epoch', creation_time) as creation_time",
+        )
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to prepare cached: {e}")))?;
+
+    let row = client
+        .query_opt(&stmt, &[&email])
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to execute delete statement: {e}")))?;
+
+    match row {
+        Some(row) => Ok(user_from_row(row)),
+        None => Err(napi::Error::from_reason("User not found")),
     }
 }

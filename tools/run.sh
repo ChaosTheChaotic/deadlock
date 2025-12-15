@@ -20,12 +20,14 @@ if [ ! -d "$PR/web/node_modules" ] || [ ! -d "$PR/serv/node_modules" ] || [ ! -d
 fi
 
 # Check for running postgres
-psq=$(check_for_running_postgres)
+psq=$(check_running_postgres)
 
 if [ "$psq" == "0" ]; then
   echo "A running postgres was found!"
 elif [ "$psq" == "1" ]; then
-  echo "No running postgres was found, the program WILL error in console"
+  echo "No running postgres was found, the program WILL error in console."
+  echo "If you are using docker ensure docker-compose up -d was run and a docker session is running"
+  echo "If you are using raw postgres ensure it is running"
 else
   echo "Invalid state"
 fi

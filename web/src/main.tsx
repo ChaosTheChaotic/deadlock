@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
-import { HomePage } from "./pages/pages.ts";
+import { HomePage } from "./pages/index";
 import { trpc, trpcClient, qc } from "./servs/client.ts";
 import { QueryClientProvider } from "@tanstack/react-query";
 
