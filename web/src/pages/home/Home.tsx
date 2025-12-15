@@ -114,7 +114,10 @@ export const HomePage = () => {
   };
 
   const toggleCheckPasswordVisibility = () => {
-    setUiState((prev) => ({ ...prev, showCheckPassword: !prev.showCheckPassword }));
+    setUiState((prev) => ({
+      ...prev,
+      showCheckPassword: !prev.showCheckPassword,
+    }));
   };
 
   const handleAddUser = async () => {
@@ -137,7 +140,7 @@ export const HomePage = () => {
         ...prev,
         display: JSON.stringify(newUser, null, 2),
       }));
-      
+
       // Clear form fields except display
       setUserForm((prev) => ({
         ...prev,
@@ -146,9 +149,9 @@ export const HomePage = () => {
       }));
     } catch (error) {
       console.error("Add user error:", error);
-      setUserForm((prev) => ({ 
-        ...prev, 
-        display: `Error: ${error instanceof Error ? error.message : "Unknown error occurred"}` 
+      setUserForm((prev) => ({
+        ...prev,
+        display: `Error: ${error instanceof Error ? error.message : "Unknown error occurred"}`,
       }));
     }
   };
@@ -167,7 +170,7 @@ export const HomePage = () => {
 
     try {
       const deletedUser = await deleteUserMutation.mutateAsync({ email });
-      
+
       setDeleteState({
         email: "",
         status: "success",
@@ -177,7 +180,6 @@ export const HomePage = () => {
 
       // Invalidate search users query to refresh the list
       utils.searchUsers.invalidate({ email: debouncedDB });
-
     } catch (error) {
       console.error("Delete user error:", error);
       setDeleteState((prev) => ({
@@ -203,16 +205,17 @@ export const HomePage = () => {
     setCheckPassState((prev) => ({ ...prev, isLoading: true }));
 
     try {
-      const result = await utils.client.checkPass.query({ 
-        email, 
-        pass: password 
+      const result = await utils.client.checkPass.query({
+        email,
+        pass: password,
       });
 
       setCheckPassState((prev) => ({
         ...prev,
-        result: typeof result === 'object' 
-          ? JSON.stringify(result, null, 2)
-          : String(result),
+        result:
+          typeof result === "object"
+            ? JSON.stringify(result, null, 2)
+            : String(result),
         isLoading: false,
       }));
     } catch (error) {
@@ -230,7 +233,7 @@ export const HomePage = () => {
 
   const canDeleteUser = deleteState.email.length > 0;
 
-  const canCheckPassword = 
+  const canCheckPassword =
     checkPassState.email.length > 0 && checkPassState.password.length > 0;
 
   return (
@@ -332,7 +335,7 @@ export const HomePage = () => {
           type="button"
           disabled={!canDeleteUser || deleteUserMutation.isPending}
           onClick={handleDeleteUser}
-          className={`delete-button ${deleteUserMutation.isPending ? 'loading' : ''}`}
+          className={`delete-button ${deleteUserMutation.isPending ? "loading" : ""}`}
         >
           {deleteUserMutation.isPending ? "Deleting..." : "Delete User"}
         </button>
@@ -360,7 +363,7 @@ export const HomePage = () => {
       {/* Check Password Section */}
       <section className="check-password-section">
         <h3>Check a Password</h3>
-        
+
         <div className="form-group">
           <input
             type="text"
@@ -392,14 +395,16 @@ export const HomePage = () => {
           type="button"
           disabled={!canCheckPassword || checkPassState.isLoading}
           onClick={handleCheckPassword}
-          className={`check-button ${checkPassState.isLoading ? 'loading' : ''}`}
+          className={`check-button ${checkPassState.isLoading ? "loading" : ""}`}
         >
           {checkPassState.isLoading ? "Checking..." : "Check Password"}
         </button>
 
         {/* Check Password Result */}
         {checkPassState.result && (
-          <div className={`check-result ${checkPassState.result.includes('Error') ? 'error' : 'success'}`}>
+          <div
+            className={`check-result ${checkPassState.result.includes("Error") ? "error" : "success"}`}
+          >
             <h4>Result:</h4>
             <pre>{checkPassState.result}</pre>
           </div>
