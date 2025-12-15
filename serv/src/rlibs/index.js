@@ -7,4 +7,4 @@ const utildirn = path.dirname(fileURLToPath(import.meta.url))
 
 const ebp = path.join(utildirn, "napi_exports.node");
 const ebinding = req(ebp);
-export const { initDbs, searchUsers, createUser } = ebinding;
+export const { initDbs, searchUsers, createUser, deleteUser, checkPass } = ebinding;
