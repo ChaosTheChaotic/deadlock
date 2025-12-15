@@ -37,15 +37,15 @@
             export PATH=$HOME/bin:$PATH
             
             # Check if dockerd-rootless is already running
-            if [ ! -S "$XDG_RUNTIME_DIR/docker.sock" ]; then
+            if ! docker version >/dev/null 2>&1; then
               echo "Starting dockerd-rootless in the background..."
               
-              # Create necessary directories
-              mkdir -p $HOME/.local/share/docker
-              
-              # Start dockerd-rootless in background and save PID
-              dockerd-rootless --experimental --storage-driver overlay2 &
-              DOCKERD_PID=$!
+              # Start dockerd-rootless in a proper subprocess
+              # Using nohup and setsid to properly detach the process
+              setsid nohup dockerd-rootless \
+                --experimental \
+                --storage-driver overlay2 \
+                > $HOME/.docker-rootless.log 2>&1 &
               
               # Wait for Docker socket to be created
               echo "Waiting for Docker socket..."
@@ -56,22 +56,8 @@
                 fi
                 sleep 1
               done
-              
-              # Store PID for cleanup
-              echo $DOCKERD_PID > /tmp/dockerd-rootless.pid
-              
-              # Set up trap to kill dockerd-rootless on shell exit
-              cleanup_docker() {
-                echo "Cleaning up dockerd-rootless..."
-                if [ -f /tmp/dockerd-rootless.pid ]; then
-                  kill $(cat /tmp/dockerd-rootless.pid) 2>/dev/null || true
-                  rm -f /tmp/dockerd-rootless.pid
-                fi
-              }
-              trap cleanup_docker EXIT
             else
-              echo "Docker socket already exists at $XDG_RUNTIME_DIR/docker.sock"
-              echo "Using existing dockerd-rootless instance"
+              echo "Docker is already running"
             fi
             
             # Test Docker connection
@@ -79,14 +65,16 @@
             if docker info >/dev/null 2>&1; then
               echo "OK"
               echo "Docker version: $(docker --version)"
+              DOCKER_PID=$(ps aux | grep dockerd-rootless | grep -v grep | head -1 | awk '{print $2}')
+              echo "Docker daemon PID: $DOCKER_PID"
             else
               echo "FAILED"
               echo "Warning: Docker may not be ready yet"
             fi
 
-	    echo "--- Rustup setup ---"
-	    rustup default stable
-	    echo "--- Rustup setup complete ---"
+            echo "--- Rustup setup ---"
+            rustup default stable
+            echo "--- Rustup setup complete ---"
             
             echo ""
             echo "--- Database Options ---"
@@ -107,9 +95,30 @@
             echo "  Check its package.json for available scripts."
             echo ""
             echo "--- Notes ---"
-            echo "- dockerd-rootless is running in background (PID: $DOCKERD_PID)"
-            echo "- It will be automatically stopped when you exit this shell"
             echo "- Docker socket: $DOCKER_HOST"
+            echo "- To stop Docker daemon when done:"
+            echo "  pkill -f dockerd-rootless"
+            echo "- Docker logs: $HOME/.docker-rootless.log"
+            
+            # Cleanup function that runs when the shell exits
+            cleanup() {
+              echo "Cleaning up..."
+              # Only kill Docker if we started it in this session
+              if [ -n "$DOCKER_PID" ]; then
+                echo "Stopping Docker daemon..."
+                kill $DOCKER_PID 2>/dev/null || true
+              fi
+            }
+            
+            # Set up trap to run cleanup on shell exit
+            trap cleanup EXIT
+            
+            # Ignore Ctrl+C in this shell, let zsh handle it
+            trap \'\' INT
+            
+            echo ""
+            echo "Press Ctrl+D to exit this shell and stop Docker"
+            echo "Press Ctrl+C to interrupt foreground processes in zsh"
           '';
         };
       });
