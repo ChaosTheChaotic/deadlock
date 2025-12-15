@@ -9,6 +9,13 @@ type UserFormData = {
   display: string;
 };
 
+type DeleteUserState = {
+  email: string;
+  status: "idle" | "success" | "error";
+  message: string;
+  deletedUser: any | null;
+};
+
 export const HomePage = () => {
   const [search, setSearch] = useState({
     text: "",
@@ -21,6 +28,13 @@ export const HomePage = () => {
     display: "",
   });
 
+  const [deleteState, setDeleteState] = useState<DeleteUserState>({
+    email: "",
+    status: "idle",
+    message: "",
+    deletedUser: null,
+  });
+
   const [uiState, setUiState] = useState({
     showPassword: false,
   });
@@ -29,6 +43,8 @@ export const HomePage = () => {
   const debouncedDB = useDebounce(search.db, 500);
 
   const addUserMutation = trpc.addUser.useMutation();
+  const deleteUserMutation = trpc.deleteUser.useMutation();
+  const utils = trpc.useUtils();
 
   const { data: textData, isLoading: isTextLoading } = trpc.hello.useQuery(
     { name: debouncedText },
@@ -56,6 +72,16 @@ export const HomePage = () => {
     }
   };
 
+  const handleDeleteInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setDeleteState((prev) => ({
+      ...prev,
+      email: e.target.value,
+      status: "idle",
+      message: "",
+      deletedUser: null,
+    }));
+  };
+
   const togglePasswordVisibility = () => {
     setUiState((prev) => ({ ...prev, showPassword: !prev.showPassword }));
   };
@@ -80,14 +106,62 @@ export const HomePage = () => {
         ...prev,
         display: JSON.stringify(newUser, null, 2),
       }));
+      
+      // Clear form fields except display
+      setUserForm((prev) => ({
+        ...prev,
+        email: "",
+        password: "",
+      }));
     } catch (error) {
       console.error("Add user error:", error);
-      setUserForm((prev) => ({ ...prev, display: "Error occurred" }));
+      setUserForm((prev) => ({ 
+        ...prev, 
+        display: `Error: ${error instanceof Error ? error.message : "Unknown error occurred"}` 
+      }));
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    const { email } = deleteState;
+
+    if (!email.trim()) {
+      setDeleteState((prev) => ({
+        ...prev,
+        status: "error",
+        message: "Email is required to delete a user",
+      }));
+      return;
+    }
+
+    try {
+      const deletedUser = await deleteUserMutation.mutateAsync({ email });
+      
+      setDeleteState({
+        email: "",
+        status: "success",
+        message: "User deleted successfully!",
+        deletedUser,
+      });
+
+      // Invalidate search users query to refresh the list
+      utils.searchUsers.invalidate({ email: debouncedDB });
+
+    } catch (error) {
+      console.error("Delete user error:", error);
+      setDeleteState((prev) => ({
+        ...prev,
+        status: "error",
+        message: `Error: ${error instanceof Error ? error.message : "Failed to delete user"}`,
+        deletedUser: null,
+      }));
     }
   };
 
   const canSubmitUser =
     userForm.email.length > 0 && userForm.password.length > 0;
+
+  const canDeleteUser = deleteState.email.length > 0;
 
   return (
     <div className="home-page">
@@ -168,6 +242,48 @@ export const HomePage = () => {
 
         {userForm.display && (
           <pre className="user-display">New User: {userForm.display}</pre>
+        )}
+      </section>
+
+      {/* Delete User Section */}
+      <section className="delete-user-section">
+        <h3>Delete User</h3>
+        <div className="form-group">
+          <input
+            type="text"
+            value={deleteState.email}
+            onChange={handleDeleteInputChange}
+            placeholder="Enter email to delete"
+            className="form-input"
+          />
+        </div>
+
+        <button
+          type="button"
+          disabled={!canDeleteUser || deleteUserMutation.isPending}
+          onClick={handleDeleteUser}
+          className={`delete-button ${deleteUserMutation.isPending ? 'loading' : ''}`}
+        >
+          {deleteUserMutation.isPending ? "Deleting..." : "Delete User"}
+        </button>
+
+        {/* Status Messages */}
+        {deleteState.status === "success" && (
+          <div className="delete-status success">
+            <p>{deleteState.message}</p>
+            {deleteState.deletedUser && (
+              <div className="deleted-user-preview">
+                <h4>Deleted User Preview:</h4>
+                <pre>{JSON.stringify(deleteState.deletedUser, null, 2)}</pre>
+              </div>
+            )}
+          </div>
+        )}
+
+        {deleteState.status === "error" && (
+          <div className="delete-status error">
+            <p>{deleteState.message}</p>
+          </div>
         )}
       </section>
     </div>
