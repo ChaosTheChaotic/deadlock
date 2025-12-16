@@ -1,5 +1,8 @@
-import express from "express";
-import { createExpressMiddleware } from "@trpc/server/adapters/express";
+import express, { Request } from "express";
+import {
+  createExpressMiddleware,
+  CreateExpressContextOptions,
+} from "@trpc/server/adapters/express";
 import { appRouter } from "./trpc";
 import path from "path";
 import { initDbs } from "./rlibs";
@@ -9,6 +12,21 @@ const port = process.env.PORT ?? 8888;
 
 const cdp = path.join(__dirname, "../../web/dist");
 app.use(express.static(cdp));
+app.use(express.json());
+
+interface CtxRequest extends Request {
+  ctx?: { token?: string };
+}
+
+app.use((req, _, next) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice(7)
+    : undefined;
+
+  (req as CtxRequest).ctx = { token };
+  next();
+});
 
 async function initializeServer() {
   try {
@@ -20,6 +38,13 @@ async function initializeServer() {
       "/trpc",
       createExpressMiddleware({
         router: appRouter,
+        createContext: (opts: CreateExpressContextOptions) => {
+          const req = opts.req as CtxRequest;
+
+          return {
+            token: req.ctx?.token,
+          };
+        },
       }),
     );
 

@@ -21,10 +21,10 @@ impl JwtManager {
     pub fn new() -> Result<Self, String> {
         let secret = env::var("JWT_SECRET").map_err(|e| e.to_string())?;
         
-        let texp_hrs = env::var("JWT_EXPIRY_HOURS")
+        let texp_hrs = env::var("JWT_EXPIRY_HRS")
             .unwrap_or_else(|_| "24".to_string())
             .parse::<i64>()
-            .map_err(|e| format!("Invalid JWT_EXPIRY_HOURS: {}", e))?;
+            .map_err(|e| format!("Invalid JWT_EXPIRY_HRS: {}", e))?;
 
         Ok(JwtManager {
             secret:  secret.into_bytes(),
@@ -35,7 +35,7 @@ impl JwtManager {
     pub async fn gen_token(&self, uid:  &str, email: &str) -> Result<String, String> {
         let now = Utc::now();
         let iat = now.timestamp();
-        let exp = (now + Duration::hours(self. texp_hrs)).timestamp();
+        let exp = (now + Duration::hours(self.texp_hrs)).timestamp();
 
         let claims = TokenClaims {
             uid:  uid.to_string(),
@@ -80,7 +80,7 @@ pub async fn verify_jwt_token(token: &str) -> Result<String, String> {
     let jwt_manager = JwtManager::new()?;
     let claims = jwt_manager.verify_token(token).await?;
     Ok(json! ({
-        "uid": claims. uid,
+        "uid": claims.uid,
         "email": claims.email,
         "iat": claims.iat,
         "exp": claims.exp

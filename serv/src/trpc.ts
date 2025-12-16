@@ -1,40 +1,153 @@
-import { initTRPC } from "@trpc/server";
+import { initTRPC, TRPCError } from "@trpc/server";
+import type { CreateNextContextOptions } from "@trpc/server/adapters/next";
 import { z } from "zod";
-import { createUser, searchUsers, deleteUser, checkPass } from "./rlibs/index";
+import * as Rapi from "./rlibs/index";
 
-export const t = initTRPC.create();
+export const createCtx = (opts: CreateNextContextOptions) => {
+  const token = opts.req.headers.authorization;
+  return {
+    token,
+  };
+};
+export type Ctx = ReturnType<typeof createCtx>;
+
+export const t = initTRPC.context<Ctx>().create();
+
+const authMiddleware = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.token) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Missing authentication token",
+    });
+  }
+
+  try {
+    const claimsJson = await Rapi.checkJwt(ctx.token);
+    const claims = JSON.parse(claimsJson) as Record<string, unknown>;
+    return next({
+      ctx: {
+        ...ctx,
+        user: claims,
+      },
+    });
+  } catch (error) {
+    if (error instanceof TRPCError) {
+      throw error;
+    }
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Invalid or expired token",
+    });
+  }
+});
+
+export const protectedProcedure = t.procedure.use(authMiddleware);
 
 export const appRouter = t.router({
-  hello: t.procedure
-    .input(z.object({ name: z.string().optional() }))
-    .query(({ input }) => {
-      return `Hello, ${input.name ?? "world"}!`;
-    }),
-  searchUsers: t.procedure
-    .input(z.object({ email: z.string() }))
+  searchUsers: protectedProcedure
+    .input(z.object({ email: z.email() }))
     .query(async ({ input }) => {
-      return await searchUsers(input.email);
+      return await Rapi.searchUsers(input.email);
     }),
-  checkPass: t.procedure
-    .input(z.object({ email: z.string(), pass: z.string() }))
+  checkPass: protectedProcedure
+    .input(z.object({ email: z.email(), pass: z.string() }))
     .query(async ({ input }) => {
-      return await checkPass(input.email, input.pass);
+      return await Rapi.checkPass(input.email, input.pass);
     }),
-  addUser: t.procedure
+  addUser: protectedProcedure
     .input(
       z.object({
-        email: z.string(),
+        email: z.email(),
         pass: z.string().optional(),
         oauthProvider: z.string().optional(),
       }),
     )
     .mutation(async ({ input }) => {
-      return await createUser(input.email, input.pass, input.oauthProvider);
+      return await Rapi.createUser(
+        input.email,
+        input.pass,
+        input.oauthProvider,
+      );
     }),
-  deleteUser: t.procedure
-    .input(z.object({ email: z.string() }))
+  deleteUser: protectedProcedure
+    .input(z.object({ email: z.email() }))
     .mutation(async ({ input }) => {
-      return await deleteUser(input.email);
+      return await Rapi.deleteUser(input.email);
+    }),
+  login: t.procedure
+    .input(z.object({ email: z.email(), pass: z.string() }))
+    .mutation(async ({ input }) => {
+      const isValid = await Rapi.checkPass(input.email, input.pass);
+      if (!isValid) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Invalid email or password",
+        });
+      }
+
+      const usrs = await Rapi.searchUsers(input.email);
+      if (usrs.length === 0) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "User not found",
+        });
+      }
+
+      const usr = usrs[0];
+      const accessToken = await Rapi.genJwt(usr.uid, usr.email);
+      const refreshToken = await Rapi.genJwt(usr.uid, usr.email);
+
+      return {
+        accessToken,
+        refreshToken,
+        user: {
+          uid: usr.uid,
+          email: usr.email,
+        },
+      };
+    }),
+  register: t.procedure
+    .input(
+      z.object({
+        email: z.email(),
+        pass: z.string().optional(),
+        oauthProvider: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const existingUsers = await Rapi.searchUsers(input.email);
+      if (existingUsers.length > 0) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "User already exists",
+        });
+      }
+
+      const user = await Rapi.createUser(
+        input.email,
+        input.pass,
+        input.oauthProvider,
+      );
+      const accessToken = await Rapi.genJwt(user.uid, user.email);
+      const refreshToken = await Rapi.genJwt(user.uid, user.email);
+
+      return {
+        accessToken,
+        refreshToken,
+        user: {
+          uid: user.uid,
+          email: user.email,
+        },
+      };
+    }),
+
+  refreshToken: t.procedure
+    .input(z.object({ refreshToken: z.string() }))
+    .mutation(async ({ input }) => {
+      const newToken = await Rapi.refreshJwt(input.refreshToken);
+      return {
+        accessToken: newToken,
+      };
     }),
 });
 

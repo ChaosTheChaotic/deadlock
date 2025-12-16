@@ -55,20 +55,11 @@ export const HomePage = () => {
     showCheckPassword: false,
   });
 
-  const debouncedText = useDebounce(search.text, 500);
   const debouncedDB = useDebounce(search.db, 500);
 
   const addUserMutation = trpc.addUser.useMutation();
   const deleteUserMutation = trpc.deleteUser.useMutation();
   const utils = trpc.useUtils();
-
-  const { data: textData, isLoading: isTextLoading } = trpc.hello.useQuery(
-    { name: debouncedText },
-    {
-      enabled: debouncedText.length > 0,
-      refetchInterval: 2000,
-    },
-  );
 
   const { data: users, isLoading: isUsersLoading } = trpc.searchUsers.useQuery(
     { email: debouncedDB },
@@ -239,24 +230,6 @@ export const HomePage = () => {
   return (
     <div className="home-page">
       <h1>The test home page</h1>
-
-      {/* Text Input Section */}
-      <section className="text-input-section">
-        <form>
-          <label>
-            Enter some text:
-            <input
-              type="text"
-              value={search.text}
-              onChange={(e) => handleInputChange("text", e)}
-              className="text-input"
-            />
-          </label>
-          <p>Text: {search.text}</p>
-          <p>Debounced: {debouncedText}</p>
-          <p>Resp: {isTextLoading ? "Loading..." : textData}</p>
-        </form>
-      </section>
 
       {/* User Search Section */}
       <section className="user-search-section">
