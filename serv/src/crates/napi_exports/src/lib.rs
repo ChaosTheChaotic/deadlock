@@ -36,9 +36,9 @@ pub async fn gen_jwt(uid: String, email: String) -> napi::Result<String> {
 
 #[napi]
 pub async fn check_jwt(token: String) -> napi::Result<String> {
-    verify_jwt_token(&token).await.map_err(|e| e.to_string())
+    verify_jwt_token(&token).await.map_err(|e| napi::Error::from_reason(e.to_string()))
 }
 #[napi]
 pub async fn refresh_jwt(token: String) -> napi::Result<String> {
-    refresh_jwt_token(&token).await.map_err(|e| e.to_string())
+    refresh_jwt_token(&token).await.map_err(|e| napi::Error::from_reason(e.to_string()))
 }

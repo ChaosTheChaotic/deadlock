@@ -1,6 +1,7 @@
 use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::env;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -18,7 +19,7 @@ pub struct JwtManager {
 
 impl JwtManager {
     pub fn new() -> Result<Self, String> {
-        let secret = env::var("JWT_SECRET")?;
+        let secret = env::var("JWT_SECRET").map_err(|e| e.to_string())?;
         
         let texp_hrs = env::var("JWT_EXPIRY_HOURS")
             .unwrap_or_else(|_| "24".to_string())
@@ -58,8 +59,8 @@ impl JwtManager {
     }
 
     pub async fn refresh_token(&self, token: &str) -> Result<String, String> {
-        let claims = self.verify_token(token)?;
-        self.generate_token(&claims.uid, &claims.email)
+        let claims = self.verify_token(token).await?;
+        self.gen_token(&claims.uid, &claims.email).await
     }
 }
 
@@ -71,13 +72,13 @@ impl Default for JwtManager {
 
 pub async fn gen_jwt_token(uid: &str, email: &str) -> Result<String, String> {
     let jwt_manager = JwtManager::new()?;
-    let token = jwt_manager.gen_token(uid, email)?;
+    let token = jwt_manager.gen_token(uid, email).await?;
     Ok(token)
 }
 
 pub async fn verify_jwt_token(token: &str) -> Result<String, String> {
     let jwt_manager = JwtManager::new()?;
-    let claims = jwt_manager.verify_token(token)?;
+    let claims = jwt_manager.verify_token(token).await?;
     Ok(json! ({
         "uid": claims. uid,
         "email": claims.email,
@@ -88,5 +89,5 @@ pub async fn verify_jwt_token(token: &str) -> Result<String, String> {
 
 pub async fn refresh_jwt_token(token: &str) -> Result<String, String> {
     let jwt_manager = JwtManager::new()?;
-    jwt_manager.refresh_token(token)
+    jwt_manager.refresh_token(token).await
 }
