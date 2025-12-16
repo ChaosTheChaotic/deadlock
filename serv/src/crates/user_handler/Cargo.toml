@@ -7,9 +7,9 @@ edition = "2024"
 crate-type = ["rlib"]
 
 [dependencies]
-argon2 = "0.5.3"
-napi = { version = "3.6.1", features = ["async"] }
-napi-derive = "3.4.0"
-rand_core = { version = "0.6.4", features = ["getrandom"] }
-shared_types = { path = "../shared_types" }
-db = { path = "../db" }
+shared_types = { workspace = true }
+db = { workspace = true }
+argon2 = { workspace = true }
+napi-derive = { workspace = true }
+rand_core = { workspace = true }
+napi = { workspace = true, features = ["async"] }

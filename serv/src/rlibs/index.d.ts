@@ -16,10 +16,3 @@ export interface User {
   oauthProvider?: string
   createTime: number
 }
-export declare function addUser(email: string, pass?: string | undefined | null, oauthProvider?: string | undefined | null): Promise<User>
-
-export declare function deleteUser(email: string): Promise<User>
-
-export declare function searchUsers(emailStr: string): Promise<Array<User>>
-
-export declare function validatePass(email: string, pass: string): Promise<boolean>

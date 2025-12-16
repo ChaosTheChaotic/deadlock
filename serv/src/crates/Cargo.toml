@@ -1,0 +1,20 @@
+[workspace]
+resolver = "3"
+members = ["shared_types", "db", "user_handler", "napi_exports"]
+
+[workspace.dependencies]
+# Internal Workspace Crates
+shared_types = { path = "shared_types" }
+db = { path = "db" }
+user_handler = { path = "user_handler" }
+
+# External Dependencies
+argon2 = "0.5.3"
+deadpool-postgres = "0.14.1"
+dotenv = "0.15.0"
+napi = "3.7.0"
+napi-derive = "3.4.0"
+napi-build = "2.3.1"
+rand_core = { version = "0.6.4", features = ["getrandom"] }
+tokio = "1.48.0"
+tokio-postgres = "0.7.15"
