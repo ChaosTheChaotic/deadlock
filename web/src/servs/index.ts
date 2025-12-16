@@ -1,1 +1,1 @@
-export { trpc, trpcClient, qc } from './client';
+export { trpc, trpcClient, qc } from "./client";

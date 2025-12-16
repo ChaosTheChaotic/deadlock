@@ -13,11 +13,11 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, 'src'),
-      '@serv': path.resolve(__dirname, '../serv/src'),
-      '@hooks': path.resolve(__dirname, 'src/hooks'),
-      '@pages': path.resolve(__dirname, 'src/pages'),
-      '@servs': path.resolve(__dirname, 'src/servs'),
-    }
-  }
+      "@": path.resolve(__dirname, "src"),
+      "@serv": path.resolve(__dirname, "../serv/src"),
+      "@hooks": path.resolve(__dirname, "src/hooks"),
+      "@pages": path.resolve(__dirname, "src/pages"),
+      "@servs": path.resolve(__dirname, "src/servs"),
+    },
+  },
 });
