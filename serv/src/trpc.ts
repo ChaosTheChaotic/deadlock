@@ -3,8 +3,24 @@ import type { CreateNextContextOptions } from "@trpc/server/adapters/next";
 import { z } from "zod";
 import * as Rapi from "./rlibs/index";
 
+function hasHeaders(obj: unknown): obj is { headers: Record<string, unknown> } {
+  return (
+    typeof obj === "object" &&
+    obj !== null &&
+    "headers" in obj &&
+    typeof (obj as Record<string, unknown>).headers === "object"
+  );
+}
+
 export const createCtx = (opts: CreateNextContextOptions) => {
-  const token = opts.req.headers.authorization;
+  const req = opts.req as unknown;
+  let token: string | undefined;
+
+  if (hasHeaders(req)) {
+    const authHeader = req.headers.authorization;
+    token = typeof authHeader === "string" ? authHeader : undefined;
+  }
+
   return {
     token,
   };
@@ -23,7 +39,15 @@ const authMiddleware = t.middleware(async ({ ctx, next }) => {
 
   try {
     const claimsJson = await Rapi.checkJwt(ctx.token);
-    const claims = JSON.parse(claimsJson) as Record<string, unknown>;
+    let claims: Record<string, unknown>;
+    try {
+      claims = JSON.parse(claimsJson) as Record<string, unknown>;
+    } catch {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "Invalid token format",
+      });
+    }
     return next({
       ctx: {
         ...ctx,
