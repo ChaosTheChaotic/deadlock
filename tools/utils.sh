@@ -32,7 +32,7 @@ function check_installed_prompt() {
     read -p "$cmd is not installed, would you like to install it through the script using the above command? (y/N): " yn
     yn=${yn:-n}
     case "$yn" in
-      [Yy]* ) echo "Installing..." && icmd;;
+      [Yy]* ) echo "Installing..." && eval "$icmd";;
       [Nn]* ) fatal "$cmd not installed, which is needed to run this";;
       * ) fatal "Invalid case hit";;
     esac
@@ -41,7 +41,7 @@ function check_installed_prompt() {
 
 function check_common_deps() {
   check_installed_prompt "pnpm" "curl -fsSL https://get.pnpm.io/install.sh | sh -"
-  check_installed_prompt "cargo" "curl https://sh.rustup.rs -sSf | sh"
+  check_installed_prompt "cargo" "curl https://sh.rustup.rs -sSf | sh "
 }
 
 function check_running_postgres() {
@@ -57,3 +57,4 @@ function check_running_postgres() {
     echo "1"
   fi
 }
+
