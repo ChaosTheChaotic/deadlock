@@ -1,12 +1,13 @@
 [workspace]
 resolver = "3"
-members = ["shared_types", "db", "user_handler", "napi_exports"]
+members = ["shared_types", "db", "user_handler", "jwt_handler", "napi_exports"]
 
 [workspace.dependencies]
 # Internal Workspace Crates
 shared_types = { path = "shared_types" }
 db = { path = "db" }
 user_handler = { path = "user_handler" }
+jwt_handler = { path = "jwt_handler" }
 
 # External Dependencies
 argon2 = "0.5.3"
@@ -18,3 +19,7 @@ napi-build = "2.3.1"
 rand_core = { version = "0.6.4", features = ["getrandom"] }
 tokio = "1.48.0"
 tokio-postgres = "0.7.15"
+jsonwebtoken = "10.2.0"
+serde = "1.0.228"
+serde_json = "1.0.145"
+chrono = "0.4.42"

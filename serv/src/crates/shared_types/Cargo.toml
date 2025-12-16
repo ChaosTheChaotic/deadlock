@@ -12,3 +12,4 @@ napi = { workspace = true }
 napi-derive = { workspace = true }
 tokio = { workspace = true }
 tokio-postgres = { workspace = true }
+serde = { workspace = true, features = ["derive"] }

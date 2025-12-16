@@ -11,6 +11,8 @@ crate-type = ["cdylib", "rlib"]
 shared_types = { workspace = true }
 db = { workspace = true }
 user_handler = { workspace = true }
+jwt_handler = { workspace = true }
+
 napi-derive = { workspace = true }
 napi = { workspace = true, features = ["async"] }
 
