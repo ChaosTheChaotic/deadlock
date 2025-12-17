@@ -1,8 +1,8 @@
-use napi_derive::napi;
-pub use tokio_postgres::Row;
-use tokio::sync::OnceCell;
 use deadpool_postgres::Pool;
-use serde::{Serialize, Deserialize};
+use napi_derive::napi;
+use serde::{Deserialize, Serialize};
+use tokio::sync::OnceCell;
+pub use tokio_postgres::Row;
 
 pub static DB_POOL_USERS: OnceCell<Pool> = OnceCell::const_new();
 pub static DB_POOL_GRIDS: OnceCell<Pool> = OnceCell::const_new();
@@ -26,5 +26,5 @@ pub struct TokenResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthContext {
     pub uid: String,
-    pub email:  String,
+    pub email: String,
 }

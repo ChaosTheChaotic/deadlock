@@ -16,4 +16,4 @@ cd $PR/serv
 pnpm fix && echo "Fixed server" || fatal "Failed to fix server"
 
 cd $PR/serv/src/crates
-cargo clippy --fix && echo "Fixed Rust" || fatal "Failed to fix rust"
+cargo clippy --fix --allow-dirty && cargo fmt && echo "Fixed Rust" || fatal "Failed to fix rust"

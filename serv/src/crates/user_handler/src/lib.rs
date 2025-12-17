@@ -1,10 +1,9 @@
+use argon2::{
+    Argon2, PasswordHash, PasswordVerifier,
+    password_hash::{PasswordHasher, SaltString},
+};
 use db::get_uidb_pool;
 use shared_types::{Row, User};
-use argon2::{
-    Argon2, PasswordHash, PasswordVerifier, password_hash::{
-        PasswordHasher, SaltString
-    }
-};
 
 pub fn user_from_row(row: Row) -> User {
     User {
@@ -148,23 +147,24 @@ pub async fn validate_pass(email: String, pass: String) -> napi::Result<bool> {
     }
 
     let row = &rows[0];
-    
+
     let password_hash: Option<String> = row.get("password_hash");
-    
+
     match password_hash {
         Some(hash) => {
-            let parsed_hash = PasswordHash::new(&hash)
-                .map_err(|e| napi::Error::from_reason(format!("Failed to parse password hash: {e}")))?;
-            
+            let parsed_hash = PasswordHash::new(&hash).map_err(|e| {
+                napi::Error::from_reason(format!("Failed to parse password hash: {e}"))
+            })?;
+
             // Use Argon2 to verify the password
             let argon2 = Argon2::default();
-            let is_valid = argon2.verify_password(pass.as_bytes(), &parsed_hash).is_ok();
-            
+            let is_valid = argon2
+                .verify_password(pass.as_bytes(), &parsed_hash)
+                .is_ok();
+
             Ok(is_valid)
         }
-        None => {
-            Ok(false)
-        }
+        None => Ok(false),
     }
 }
 
@@ -188,10 +188,9 @@ pub async fn delete_user(email: String) -> napi::Result<User> {
         .await
         .map_err(|e| napi::Error::from_reason(format!("Failed to prepare cached: {e}")))?;
 
-    let row = client
-        .query_opt(&stmt, &[&email])
-        .await
-        .map_err(|e| napi::Error::from_reason(format!("Failed to execute delete statement: {e}")))?;
+    let row = client.query_opt(&stmt, &[&email]).await.map_err(|e| {
+        napi::Error::from_reason(format!("Failed to execute delete statement: {e}"))
+    })?;
 
     match row {
         Some(row) => Ok(user_from_row(row)),

@@ -1,10 +1,10 @@
 use chrono::{Duration, Utc};
-use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use napi_derive::napi;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::env;
 use std::sync::OnceLock;
-use napi_derive::napi;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AccessTokenClaims {
@@ -23,7 +23,7 @@ pub struct RefreshTokenClaims {
     pub iat: i64,
     pub exp: i64,
     pub token_type: String, // "refresh"
-    pub jti: String, // JWT ID for refresh token rotation
+    pub jti: String,        // JWT ID for refresh token rotation
 }
 
 pub struct JwtManager {
@@ -35,12 +35,12 @@ pub struct JwtManager {
 
 impl JwtManager {
     pub fn new() -> Result<Self, String> {
-        let access_secret = env::var("JWT_ACCESS_SECRET")
-            .map_err(|_| "JWT_ACCESS_SECRET not set".to_string())?;
-        
-        let refresh_secret = env::var("JWT_REFRESH_SECRET")
-            .map_err(|_| "JWT_REFRESH_SECRET not set".to_string())?;
-        
+        let access_secret =
+            env::var("JWT_ACCESS_SECRET").map_err(|_| "JWT_ACCESS_SECRET not set".to_string())?;
+
+        let refresh_secret =
+            env::var("JWT_REFRESH_SECRET").map_err(|_| "JWT_REFRESH_SECRET not set".to_string())?;
+
         // Different expiration times for access vs refresh tokens
         let access_exp_hours = env::var("JWT_ACCESS_EXPIRY_HRS")
             .unwrap_or_else(|_| "1".to_string()) // 1 hour for access
@@ -78,7 +78,11 @@ impl JwtManager {
             .map_err(|e| format!("Failed to encode access token: {}", e))
     }
 
-    pub async fn gen_refresh_token(&self, uid: &str, email: &str) -> Result<(String, String), String> {
+    pub async fn gen_refresh_token(
+        &self,
+        uid: &str,
+        email: &str,
+    ) -> Result<(String, String), String> {
         let now = Utc::now();
         let iat = now.timestamp();
         let exp = (now + Duration::days(self.refresh_exp_days)).timestamp();
@@ -105,7 +109,7 @@ impl JwtManager {
         let mut validation = Validation::new(Algorithm::HS256);
         validation.validate_exp = true;
         validation.set_required_spec_claims(&["exp", "iat", "token_type"]);
-        
+
         let token_data = decode::<AccessTokenClaims>(token, &decoding_key, &validation)
             .map_err(|e| format!("Failed to verify access token: {}", e))?;
 
@@ -122,7 +126,7 @@ impl JwtManager {
         let mut validation = Validation::new(Algorithm::HS256);
         validation.validate_exp = true;
         validation.set_required_spec_claims(&["exp", "iat", "token_type", "jti"]);
-        
+
         let token_data = decode::<RefreshTokenClaims>(token, &decoding_key, &validation)
             .map_err(|e| format!("Failed to verify refresh token: {}", e))?;
 
@@ -133,16 +137,23 @@ impl JwtManager {
         Ok(token_data.claims)
     }
 
-    pub async fn rotate_refresh_token(&self, old_refresh_token: &str) -> Result<(String, String, String), String> {
+    pub async fn rotate_refresh_token(
+        &self,
+        old_refresh_token: &str,
+    ) -> Result<(String, String, String), String> {
         // Verify old refresh token
         let old_claims = self.verify_refresh_token(old_refresh_token).await?;
-        
+
         // Generate new refresh token with new JTI
-        let (new_token, new_jti) = self.gen_refresh_token(&old_claims.uid, &old_claims.email).await?;
-        
+        let (new_token, new_jti) = self
+            .gen_refresh_token(&old_claims.uid, &old_claims.email)
+            .await?;
+
         // Generate new access token
-        let new_access_token = self.gen_access_token(&old_claims.uid, &old_claims.email).await?;
-        
+        let new_access_token = self
+            .gen_access_token(&old_claims.uid, &old_claims.email)
+            .await?;
+
         Ok((new_access_token, new_token, new_jti))
     }
 }
@@ -151,7 +162,10 @@ impl JwtManager {
 static JWT_MANAGER: OnceLock<Result<JwtManager, String>> = OnceLock::new();
 
 pub async fn get_jwt_manager() -> Result<&'static JwtManager, String> {
-    JWT_MANAGER.get_or_init(JwtManager::new).as_ref().map_err(|e| e.clone())
+    JWT_MANAGER
+        .get_or_init(JwtManager::new)
+        .as_ref()
+        .map_err(|e| e.clone())
 }
 
 // Public API functions start here
@@ -170,7 +184,8 @@ pub async fn verify_access_token(token: &str) -> Result<String, String> {
         "email": claims.email,
         "iat": claims.iat,
         "exp": claims.exp
-    }).to_string())
+    })
+    .to_string())
 }
 
 pub async fn verify_refresh_token(token: &str) -> Result<String, String> {
@@ -181,7 +196,8 @@ pub async fn verify_refresh_token(token: &str) -> Result<String, String> {
         "iat": claims.iat,
         "exp": claims.exp,
         "jti": claims.jti
-    }).to_string())
+    })
+    .to_string())
 }
 
 pub async fn rotate_refresh_token(token: &str) -> Result<(String, String, String), String> {
