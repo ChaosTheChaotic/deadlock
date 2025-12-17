@@ -3,7 +3,7 @@ import { useDebounce } from "@hooks/useDebounce";
 import { trpc } from "@servs/client";
 import "./Home.css";
 import type { User } from "@serv/rlibs";
-import { useAuth } from "@contexts/auth";
+import { useAuth } from "@hooks/index";
 import { LoginForm } from "@components/LoginForm";
 
 type UserFormData = {
@@ -240,159 +240,161 @@ export const HomePage = () => {
           <p>UID: {user.uid}</p>
           <button onClick={logout}>Logout</button>
 
-      {/* User Search Section */}
-      <section className="user-search-section">
-        <h2>Search DB:</h2>
-        <input
-          type="text"
-          value={search.db}
-          onChange={(e) => handleInputChange("db", e)}
-          placeholder={"Search users by email"}
-          className="search-input"
-        />
-        <p>
-          Users:{" "}
-          {isUsersLoading ? "Loading..." : JSON.stringify(users, null, 2)}
-        </p>
-      </section>
+          {/* User Search Section */}
+          <section className="user-search-section">
+            <h2>Search DB:</h2>
+            <input
+              type="text"
+              value={search.db}
+              onChange={(e) => handleInputChange("db", e)}
+              placeholder={"Search users by email"}
+              className="search-input"
+            />
+            <p>
+              Users:{" "}
+              {isUsersLoading ? "Loading..." : JSON.stringify(users, null, 2)}
+            </p>
+          </section>
 
-      {/* New User Form Section */}
-      <section className="new-user-form">
-        <h3>Add New User</h3>
-        <div className="form-group">
-          <input
-            type="text"
-            value={userForm.email}
-            onChange={(e) => handleInputChange("email", e)}
-            placeholder="Email"
-            className="form-input"
-          />
-        </div>
+          {/* New User Form Section */}
+          <section className="new-user-form">
+            <h3>Add New User</h3>
+            <div className="form-group">
+              <input
+                type="text"
+                value={userForm.email}
+                onChange={(e) => handleInputChange("email", e)}
+                placeholder="Email"
+                className="form-input"
+              />
+            </div>
 
-        <div className="form-group password-group">
-          <input
-            type={uiState.showPassword ? "text" : "password"}
-            value={userForm.password}
-            onChange={(e) => handleInputChange("password", e)}
-            placeholder="Password"
-            className="form-input"
-          />
-          <button
-            type="button"
-            onClick={togglePasswordVisibility}
-            className="toggle-password"
-          >
-            {uiState.showPassword ? "Hide" : "Show"} Password
-          </button>
-        </div>
+            <div className="form-group password-group">
+              <input
+                type={uiState.showPassword ? "text" : "password"}
+                value={userForm.password}
+                onChange={(e) => handleInputChange("password", e)}
+                placeholder="Password"
+                className="form-input"
+              />
+              <button
+                type="button"
+                onClick={togglePasswordVisibility}
+                className="toggle-password"
+              >
+                {uiState.showPassword ? "Hide" : "Show"} Password
+              </button>
+            </div>
 
-        <button
-          type="button"
-          disabled={!canSubmitUser}
-          onClick={handleAddUser}
-          className="submit-button"
-        >
-          Submit user info
-        </button>
+            <button
+              type="button"
+              disabled={!canSubmitUser}
+              onClick={handleAddUser}
+              className="submit-button"
+            >
+              Submit user info
+            </button>
 
-        {userForm.display && (
-          <pre className="user-display">New User: {userForm.display}</pre>
-        )}
-      </section>
+            {userForm.display && (
+              <pre className="user-display">New User: {userForm.display}</pre>
+            )}
+          </section>
 
-      {/* Delete User Section */}
-      <section className="delete-user-section">
-        <h3>Delete User</h3>
-        <div className="form-group">
-          <input
-            type="text"
-            value={deleteState.email}
-            onChange={handleDeleteInputChange}
-            placeholder="Enter email to delete"
-            className="form-input"
-          />
-        </div>
+          {/* Delete User Section */}
+          <section className="delete-user-section">
+            <h3>Delete User</h3>
+            <div className="form-group">
+              <input
+                type="text"
+                value={deleteState.email}
+                onChange={handleDeleteInputChange}
+                placeholder="Enter email to delete"
+                className="form-input"
+              />
+            </div>
 
-        <button
-          type="button"
-          disabled={!canDeleteUser || deleteUserMutation.isPending}
-          onClick={handleDeleteUser}
-          className={`delete-button ${deleteUserMutation.isPending ? "loading" : ""}`}
-        >
-          {deleteUserMutation.isPending ? "Deleting..." : "Delete User"}
-        </button>
+            <button
+              type="button"
+              disabled={!canDeleteUser || deleteUserMutation.isPending}
+              onClick={handleDeleteUser}
+              className={`delete-button ${deleteUserMutation.isPending ? "loading" : ""}`}
+            >
+              {deleteUserMutation.isPending ? "Deleting..." : "Delete User"}
+            </button>
 
-        {/* Status Messages */}
-        {deleteState.status === "success" && (
-          <div className="delete-status success">
-            <p>{deleteState.message}</p>
-            {deleteState.deletedUser && (
-              <div className="deleted-user-preview">
-                <h4>Deleted User Preview:</h4>
-                <pre>{JSON.stringify(deleteState.deletedUser, null, 2)}</pre>
+            {/* Status Messages */}
+            {deleteState.status === "success" && (
+              <div className="delete-status success">
+                <p>{deleteState.message}</p>
+                {deleteState.deletedUser && (
+                  <div className="deleted-user-preview">
+                    <h4>Deleted User Preview:</h4>
+                    <pre>
+                      {JSON.stringify(deleteState.deletedUser, null, 2)}
+                    </pre>
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
 
-        {deleteState.status === "error" && (
-          <div className="delete-status error">
-            <p>{deleteState.message}</p>
-          </div>
-        )}
-      </section>
+            {deleteState.status === "error" && (
+              <div className="delete-status error">
+                <p>{deleteState.message}</p>
+              </div>
+            )}
+          </section>
 
-      {/* Check Password Section */}
-      <section className="check-password-section">
-        <h3>Check a Password</h3>
+          {/* Check Password Section */}
+          <section className="check-password-section">
+            <h3>Check a Password</h3>
 
-        <div className="form-group">
-          <input
-            type="text"
-            value={checkPassState.email}
-            onChange={(e) => handleCheckPassInputChange("email", e)}
-            placeholder="Enter email"
-            className="form-input"
-          />
+            <div className="form-group">
+              <input
+                type="text"
+                value={checkPassState.email}
+                onChange={(e) => handleCheckPassInputChange("email", e)}
+                placeholder="Enter email"
+                className="form-input"
+              />
+            </div>
+
+            <div className="form-group password-group">
+              <input
+                type={uiState.showCheckPassword ? "text" : "password"}
+                value={checkPassState.password}
+                onChange={(e) => handleCheckPassInputChange("password", e)}
+                placeholder="Enter password to check"
+                className="form-input"
+              />
+              <button
+                type="button"
+                onClick={toggleCheckPasswordVisibility}
+                className="toggle-password"
+              >
+                {uiState.showCheckPassword ? "Hide" : "Show"} Password
+              </button>
+            </div>
+
+            <button
+              type="button"
+              disabled={!canCheckPassword || checkPassState.isLoading}
+              onClick={handleCheckPassword}
+              className={`check-button ${checkPassState.isLoading ? "loading" : ""}`}
+            >
+              {checkPassState.isLoading ? "Checking..." : "Check Password"}
+            </button>
+
+            {/* Check Password Result */}
+            {checkPassState.result && (
+              <div
+                className={`check-result ${checkPassState.result.includes("Error") ? "error" : "success"}`}
+              >
+                <h4>Result:</h4>
+                <pre>{checkPassState.result}</pre>
+              </div>
+            )}
+          </section>
         </div>
-
-        <div className="form-group password-group">
-          <input
-            type={uiState.showCheckPassword ? "text" : "password"}
-            value={checkPassState.password}
-            onChange={(e) => handleCheckPassInputChange("password", e)}
-            placeholder="Enter password to check"
-            className="form-input"
-          />
-          <button
-            type="button"
-            onClick={toggleCheckPasswordVisibility}
-            className="toggle-password"
-          >
-            {uiState.showCheckPassword ? "Hide" : "Show"} Password
-          </button>
-        </div>
-
-        <button
-          type="button"
-          disabled={!canCheckPassword || checkPassState.isLoading}
-          onClick={handleCheckPassword}
-          className={`check-button ${checkPassState.isLoading ? "loading" : ""}`}
-        >
-          {checkPassState.isLoading ? "Checking..." : "Check Password"}
-        </button>
-
-        {/* Check Password Result */}
-        {checkPassState.result && (
-          <div
-            className={`check-result ${checkPassState.result.includes("Error") ? "error" : "success"}`}
-          >
-            <h4>Result:</h4>
-            <pre>{checkPassState.result}</pre>
-          </div>
-        )}
-      </section>
-      </div>
       ) : (
         <LoginForm />
       )}

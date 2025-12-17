@@ -15,17 +15,17 @@ export interface AuthState {
   isAuthenticated: boolean;
 }
 
-const AUTH_STORAGE_KEY = 'auth_tokens';
+const AUTH_STORAGE_KEY = "auth_tokens";
 
 export class AuthService {
   static setTokens(tokens: AuthTokens) {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(tokens));
     }
   }
 
   static getTokens(): AuthTokens | null {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const tokens = localStorage.getItem(AUTH_STORAGE_KEY);
       return tokens ? JSON.parse(tokens) : null;
     }
@@ -33,7 +33,7 @@ export class AuthService {
   }
 
   static clearTokens() {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       localStorage.removeItem(AUTH_STORAGE_KEY);
     }
   }

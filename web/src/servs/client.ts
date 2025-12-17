@@ -2,6 +2,7 @@ import {
   createTRPCClient,
   createTRPCReact,
   httpBatchLink,
+  TRPCClientError,
 } from "@trpc/react-query";
 import type { AppRouter } from "@serv/trpc";
 import { QueryClient } from "@tanstack/react-query";
@@ -14,10 +15,10 @@ export const trpcClient = createTRPCClient<AppRouter>({
     httpBatchLink({
       url: "/trpc",
       headers() {
-	const access_tkn = AuthService.getAccessToken();
-	return {
-	  ...(access_tkn && { Authorization: access_tkn }),
-	};
+        const access_tkn = AuthService.getAccessToken();
+        return {
+          ...(access_tkn && { Authorization: access_tkn }),
+        };
       },
     }),
   ],
@@ -27,9 +28,12 @@ export const qc = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
-      retry: (failureCount, error: any) => {
+      retry: (failureCount, error: unknown) => {
         // Don't retry on 401 errors
-        if (error?.data?.code === 'UNAUTHORIZED') {
+        if (
+          error instanceof TRPCClientError &&
+          error?.data?.code === "UNAUTHORIZED"
+        ) {
           return false;
         }
         return failureCount < 3;

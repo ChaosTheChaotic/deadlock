@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { type User, trpc } from '@servs/index';
+import React, { useState, useEffect } from "react";
+import { type User, trpc } from "@servs/index";
+import { AuthContext } from "@hooks/index";
 
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -9,8 +10,6 @@ interface AuthContextType {
   logout: () => void;
   refreshToken: () => Promise<string | null>;
 }
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -28,7 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         setIsLoading(false);
       } catch (error) {
-        console.error('Auth initialization error:', error);
+        console.error("Auth initialization error:", error);
         setIsLoading(false);
       }
     };
@@ -40,15 +39,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       const result = await loginMutation.mutateAsync({ email, pass: password });
-      
+
       // Store tokens
-      localStorage.setItem('accessToken', result.accessToken);
-      localStorage.setItem('refreshToken', result.refreshToken);
-      
+      localStorage.setItem("accessToken", result.accessToken);
+      localStorage.setItem("refreshToken", result.refreshToken);
+
       // Update user state
       setUser(result.user);
     } catch (error) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
       throw error;
     } finally {
       setIsLoading(false);
@@ -62,15 +61,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         pass: password,
       });
-      
+
       // Store tokens
-      localStorage.setItem('accessToken', result.accessToken);
-      localStorage.setItem('refreshToken', result.refreshToken);
-      
+      localStorage.setItem("accessToken", result.accessToken);
+      localStorage.setItem("refreshToken", result.refreshToken);
+
       // Update user state
       setUser(result.user);
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error("Registration error:", error);
       throw error;
     } finally {
       setIsLoading(false);
@@ -79,26 +78,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     // Clear tokens
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+
     // Clear user state
     setUser(null);
-    
+
     // Invalidate all queries
     utils.invalidate();
   };
 
   const refreshToken = async (): Promise<string | null> => {
     try {
-      const refreshToken = localStorage.getItem('refreshToken');
+      const refreshToken = localStorage.getItem("refreshToken");
       if (!refreshToken) return null;
 
       const result = await refreshTokenMutation.mutateAsync({ refreshToken });
-      localStorage.setItem('accessToken', result.accessToken);
+      localStorage.setItem("accessToken", result.accessToken);
       return result.accessToken;
     } catch (error) {
-      console.error('Token refresh error:', error);
+      console.error("Token refresh error:", error);
       logout(); // Force logout on refresh failure
       return null;
     }
@@ -118,12 +117,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 }

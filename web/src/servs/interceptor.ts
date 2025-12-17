@@ -1,5 +1,5 @@
-import axios from 'axios';
-import { AuthService } from './auth';
+import axios from "axios";
+import { AuthService } from "./auth";
 
 const api = axios.create();
 
@@ -24,16 +24,16 @@ api.interceptors.response.use(
         // Get new access token using refresh token
         const refreshToken = AuthService.getTokens()?.refreshToken;
         if (!refreshToken) {
-          throw new Error('No refresh token available');
+          throw new Error("No refresh token available");
         }
 
         // Call your refresh endpoint
-        const response = await api.post('/trpc/refreshToken', {
+        const response = await api.post("/trpc/refreshToken", {
           json: { refreshToken },
         });
 
         const newAccessToken = response.data.result.data.accessToken;
-        
+
         // Update stored token
         const tokens = AuthService.getTokens();
         if (tokens) {
@@ -47,13 +47,13 @@ api.interceptors.response.use(
       } catch (refreshError) {
         // Refresh failed, clear tokens and redirect to login
         AuthService.clearTokens();
-        window.location.href = '/login';
+        window.location.href = "/login";
         return Promise.reject(refreshError);
       }
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;

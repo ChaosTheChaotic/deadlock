@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { useAuth } from '@contexts/auth';
+import React, { useState } from "react";
+import { useAuth } from "@hooks/index";
 
 export function LoginForm() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isRegister, setIsRegister] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { login, register, isLoading } = useAuth();
@@ -18,14 +18,14 @@ export function LoginForm() {
       } else {
         await login(email, password);
       }
-    } catch (err: any) {
-      setError(err.message || 'Authentication failed');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Authentication failed");
     }
   };
 
   return (
     <div className="login-form">
-      <h2>{isRegister ? 'Register' : 'Login'}</h2>
+      <h2>{isRegister ? "Register" : "Login"}</h2>
       {error && <div className="error">{error}</div>}
       <form onSubmit={handleSubmit}>
         <div>
@@ -47,11 +47,13 @@ export function LoginForm() {
           />
         </div>
         <button type="submit" disabled={isLoading}>
-          {isLoading ? 'Loading...' : isRegister ? 'Register' : 'Login'}
+          {isLoading ? "Loading..." : isRegister ? "Register" : "Login"}
         </button>
       </form>
       <button onClick={() => setIsRegister(!isRegister)}>
-        {isRegister ? 'Already have an account? Login' : 'Need an account? Register'}
+        {isRegister
+          ? "Already have an account? Login"
+          : "Need an account? Register"}
       </button>
     </div>
   );
