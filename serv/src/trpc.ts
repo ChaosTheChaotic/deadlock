@@ -69,7 +69,7 @@ export const protectedProcedure = t.procedure.use(authMiddleware);
 
 export const appRouter = t.router({
   searchUsers: protectedProcedure
-    .input(z.object({ email: z.email() }))
+    .input(z.object({ email: z.string() }))
     .query(async ({ input }) => {
       return await Rapi.searchUsers(input.email);
     }),

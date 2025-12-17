@@ -15,9 +15,9 @@ export const trpcClient = createTRPCClient<AppRouter>({
     httpBatchLink({
       url: "/trpc",
       headers() {
-        const access_tkn = AuthService.getAccessToken();
+        const tkn = AuthService.getAccessToken();
         return {
-          ...(access_tkn && { Authorization: access_tkn }),
+          ...(tkn && { Authorization: `Bearer ${tkn}` }),
         };
       },
     }),

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { type User, trpc } from "@servs/index";
+import { type User, trpc, AuthService } from "@servs/index";
 import { AuthContext } from "@hooks/index";
 
 export interface AuthContextType {
@@ -40,9 +40,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const result = await loginMutation.mutateAsync({ email, pass: password });
 
-      // Store tokens
-      localStorage.setItem("accessToken", result.accessToken);
-      localStorage.setItem("refreshToken", result.refreshToken);
+      AuthService.setTokens({
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+      });
 
       // Update user state
       setUser(result.user);
@@ -62,9 +63,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         pass: password,
       });
 
-      // Store tokens
-      localStorage.setItem("accessToken", result.accessToken);
-      localStorage.setItem("refreshToken", result.refreshToken);
+      AuthService.setTokens({
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+      });
 
       // Update user state
       setUser(result.user);
@@ -77,9 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
-    // Clear tokens
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
+    AuthService.clearTokens();
 
     // Clear user state
     setUser(null);
