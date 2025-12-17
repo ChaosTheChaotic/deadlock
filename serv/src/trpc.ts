@@ -39,8 +39,7 @@ export const t = initTRPC.context<Ctx>().create({
       data: {
         ...shape.data,
         zodError:
-          error.code === 'BAD_REQUEST' &&
-          error.cause instanceof Error
+          error.code === "BAD_REQUEST" && error.cause instanceof Error
             ? error.cause
             : null,
       },
@@ -60,7 +59,7 @@ const authMiddleware = t.middleware(async ({ ctx, next }) => {
   try {
     const claimsJson = await Rapi.checkAccessJwt(ctx.token);
     let claims: Record<string, unknown>;
-    
+
     try {
       claims = JSON.parse(claimsJson) as Record<string, unknown>;
     } catch {
@@ -93,13 +92,14 @@ const authMiddleware = t.middleware(async ({ ctx, next }) => {
     if (error instanceof TRPCError) {
       throw error;
     }
-    
-    const message = error instanceof Error 
-      ? error.message.includes("expired") 
-        ? "Token has expired" 
-        : error.message
-      : "Invalid token";
-    
+
+    const message =
+      error instanceof Error
+        ? error.message.includes("expired")
+          ? "Token has expired"
+          : error.message
+        : "Invalid token";
+
     throw new TRPCError({
       code: "UNAUTHORIZED",
       message,
@@ -112,12 +112,15 @@ const authMiddleware = t.middleware(async ({ ctx, next }) => {
 export const protectedProcedure = t.procedure.use(authMiddleware);
 
 // TODO: Convert this to redis
-const refreshTokenStore = new Map<string, {
-  userId: string;
-  email: string;
-  jti: string;
-  expiresAt: Date;
-}>();
+const refreshTokenStore = new Map<
+  string,
+  {
+    userId: string;
+    email: string;
+    jti: string;
+    expiresAt: Date;
+  }
+>();
 
 export const appRouter = t.router({
   searchUsers: protectedProcedure
@@ -151,10 +154,12 @@ export const appRouter = t.router({
       return await Rapi.deleteUser(input.email);
     }),
   login: t.procedure
-    .input(z.object({ 
-      email: emailSchema, 
-      pass: passSchema, 
-    }))
+    .input(
+      z.object({
+        email: emailSchema,
+        pass: passSchema,
+      }),
+    )
     .mutation(async ({ input }) => {
       const isValid = await Rapi.checkPass(input.email, input.pass);
       if (!isValid) {
@@ -180,7 +185,7 @@ export const appRouter = t.router({
 
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
-      
+
       refreshTokenStore.set(jti, {
         userId: usr.uid,
         email: usr.email,
@@ -198,7 +203,7 @@ export const appRouter = t.router({
         },
       };
     }),
-    
+
   register: t.procedure
     .input(
       z.object({
@@ -222,14 +227,17 @@ export const appRouter = t.router({
         input.pass,
         input.oauthProvider,
       );
-      
+
       const accessToken = await Rapi.genAccessJwt(user.uid, user.email);
-      const [refreshToken, jti] = await Rapi.genRefreshJwt(user.uid, user.email);
+      const [refreshToken, jti] = await Rapi.genRefreshJwt(
+        user.uid,
+        user.email,
+      );
 
       // Store refresh token metadata
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 30);
-      
+
       refreshTokenStore.set(jti, {
         userId: user.uid,
         email: user.email,
@@ -249,15 +257,17 @@ export const appRouter = t.router({
     }),
 
   refreshToken: t.procedure
-    .input(z.object({ 
-      refreshToken: z.string().min(10) 
-    }))
+    .input(
+      z.object({
+        refreshToken: z.string().min(10),
+      }),
+    )
     .mutation(async ({ input }) => {
       try {
         // Verify the refresh token first
         const claimsJson = await Rapi.checkRefreshJwt(input.refreshToken);
         const claims = JSON.parse(claimsJson) as Rapi.RefreshTokenClaims;
-        
+
         // Check if refresh token is in store (prevents reuse)
         const storedToken = refreshTokenStore.get(claims.jti);
         if (!storedToken || storedToken.userId !== claims.uid) {
@@ -267,17 +277,17 @@ export const appRouter = t.router({
             cause: "INVALID_REFRESH_TOKEN",
           });
         }
-        
+
         // Rotate refresh token (new JTI)
-        const [newAccessToken, newRefreshToken, newJti] = 
+        const [newAccessToken, newRefreshToken, newJti] =
           await Rapi.rotateRefreshJwt(input.refreshToken);
-        
+
         // Update store - remove old, add new
         refreshTokenStore.delete(claims.jti);
-        
+
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + 30);
-        
+
         refreshTokenStore.set(newJti, {
           userId: claims.uid,
           email: claims.email,
@@ -304,7 +314,7 @@ export const appRouter = t.router({
 
   logout: t.procedure
     .input(z.object({ jti: z.string().optional() }))
-    .mutation(async ({ input }) => {
+    .mutation(({ input }) => {
       if (input.jti) {
         refreshTokenStore.delete(input.jti);
       }

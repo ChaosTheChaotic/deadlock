@@ -9,7 +9,7 @@ let failedQueue: Array<{
 }> = [];
 
 const processQueue = (error: unknown, token: string | null = null) => {
-  failedQueue.forEach(promise => {
+  failedQueue.forEach((promise) => {
     if (error) {
       promise.reject(error);
     } else {
@@ -32,20 +32,22 @@ api.interceptors.request.use(
     const token = AuthService.getAccessToken();
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
-      
+
       // Add fingerprint/device ID for additional security
       const deviceId = localStorage.getItem("device_id") || "unknown";
       config.headers["X-Device-ID"] = deviceId;
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const originalRequest = error.config as InternalAxiosRequestConfig & {
+      _retry?: boolean;
+    };
 
     // Only handle 401 errors for token refresh
     if (error.response?.status === 401 && !originalRequest._retry) {
@@ -86,21 +88,21 @@ api.interceptors.response.use(
         }
 
         processQueue(null, result.accessToken);
-        
+
         // Retry original request
         originalRequest.headers!.Authorization = `Bearer ${result.accessToken}`;
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        
+
         // Clear tokens and redirect to login
         AuthService.clearTokens();
-        
+
         // Only redirect if not already on login page
         if (!window.location.pathname.includes("login")) {
           window.location.href = "/login";
         }
-        
+
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
@@ -114,7 +116,7 @@ api.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;

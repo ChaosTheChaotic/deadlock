@@ -44,7 +44,7 @@ pub async fn search_users(email_str: String) -> napi::Result<Vec<User>> {
         .map_err(|e| napi::Error::from_reason(format!("Failed to execute query: {e}")))?;
 
     // Map rows to User structs
-    let users: Vec<User> = rows.into_iter().map(|row| user_from_row(row)).collect();
+    let users: Vec<User> = rows.into_iter().map(user_from_row).collect();
 
     Ok(users)
 }

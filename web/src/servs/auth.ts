@@ -38,7 +38,7 @@ export class AuthService {
     if (typeof window !== "undefined") {
       const data = localStorage.getItem(AUTH_STORAGE_KEY);
       if (!data) return null;
-      
+
       try {
         const parsed = JSON.parse(data);
         // Validate token expiration
@@ -118,7 +118,7 @@ export class AuthService {
     try {
       const decoded = this.decodeToken(token);
       if (!decoded) return false;
-      
+
       const now = Date.now() / 1000;
       return decoded.exp > now && decoded.token_type === "access";
     } catch {
