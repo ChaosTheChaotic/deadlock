@@ -8,3 +8,6 @@ jsonwebtoken = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 chrono = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+napi = { workspace = true }
+napi-derive = { workspace = true }

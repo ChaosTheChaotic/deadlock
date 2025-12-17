@@ -13,7 +13,9 @@ export const {
   createUser,
   deleteUser,
   checkPass,
-  genJwt,
-  checkJwt,
-  refreshJwt,
+  checkAccessJwt,
+  checkRefreshJwt,
+  genAccessJwt,
+  genRefreshJwt,
+  rotateRefreshJwt,
 } = ebinding;
