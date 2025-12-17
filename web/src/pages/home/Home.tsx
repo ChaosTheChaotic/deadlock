@@ -3,6 +3,8 @@ import { useDebounce } from "@hooks/useDebounce";
 import { trpc } from "@servs/client";
 import "./Home.css";
 import type { User } from "@serv/rlibs";
+import { useAuth } from "@contexts/auth";
+import { LoginForm } from "@components/LoginForm";
 
 type UserFormData = {
   email: string;
@@ -54,6 +56,8 @@ export const HomePage = () => {
     showPassword: false,
     showCheckPassword: false,
   });
+
+  const { user, logout } = useAuth();
 
   const debouncedDB = useDebounce(search.db, 500);
 
@@ -229,7 +233,12 @@ export const HomePage = () => {
 
   return (
     <div className="home-page">
-      <h1>The test home page</h1>
+      {/* <h1>The test home page</h1> */}
+      {user ? (
+        <div>
+          <h1>Welcome, {user.email}!</h1>
+          <p>UID: {user.uid}</p>
+          <button onClick={logout}>Logout</button>
 
       {/* User Search Section */}
       <section className="user-search-section">
@@ -383,6 +392,10 @@ export const HomePage = () => {
           </div>
         )}
       </section>
+      </div>
+      ) : (
+        <LoginForm />
+      )}
     </div>
   );
 };

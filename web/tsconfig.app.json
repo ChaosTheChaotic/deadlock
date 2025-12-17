@@ -31,7 +31,9 @@
       "@serv/*": ["../serv/src/*"],
       "@hooks/*": ["src/hooks/*"],
       "@pages/*": ["src/pages/*"],
-      "@servs/*": ["src/servs/*"]
+      "@servs/*": ["src/servs/*"],
+      "@contexts/*": ["src/contexts/*"],
+      "@components/*": ["src/components/*"]
     }
   },
   "include": ["src"]
