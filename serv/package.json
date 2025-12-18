@@ -21,11 +21,15 @@
   "packageManager": "pnpm@10.24.0",
   "dependencies": {
     "@trpc/server": "^11.8.0",
+    "cookie-parser": "^1.4.7",
+    "csrf-csrf": "^4.0.3",
     "express": "^5.2.1",
+    "helmet": "^8.1.0",
     "zod": "^4.2.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
+    "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
     "@types/node": "^22.19.3",
     "@typescript-eslint/eslint-plugin": "^8.50.0",

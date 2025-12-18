@@ -1,4 +1,4 @@
-import express, { Request } from "express";
+import express from "express";
 import {
   createExpressMiddleware,
   CreateExpressContextOptions,
@@ -6,6 +6,8 @@ import {
 import { appRouter } from "./trpc";
 import path from "path";
 import { initDbs } from "./rlibs";
+import cookieParser from "cookie-parser";
+import helmet from "helmet";
 
 const app = express();
 const port = process.env.PORT ?? 8888;
@@ -13,19 +15,38 @@ const port = process.env.PORT ?? 8888;
 const cdp = path.join(__dirname, "../../web/dist");
 app.use(express.static(cdp));
 app.use(express.json());
+app.use(helmet());
+app.use(cookieParser());
 
-interface CtxRequest extends Request {
-  ctx?: { token?: string };
-}
+app.use(
+  "/trpc",
+  createExpressMiddleware({
+    router: appRouter,
+    createContext: (opts: CreateExpressContextOptions) => {
+      const { req, res } = opts;
+      
+      const cookies = req.cookies || {};
+      const token = cookies.accessToken;
 
-app.use((req, _, next) => {
-  const authHeader = req.headers.authorization;
-  const token = authHeader?.startsWith("Bearer ")
-    ? authHeader.slice(7)
-    : undefined;
+      const refreshToken = req.cookies?.refreshToken;
 
-  (req as CtxRequest).ctx = { token };
+      return {
+        token,
+        refreshToken,
+        req,
+        res,
+      };
+    },
+  }),
+);
+
+app.use((_, res, next) => {
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   next();
+});
+
+app.get(/^\/(?!trpc).*/, (_, res) => {
+  res.sendFile(path.join(cdp, "index.html"));
 });
 
 async function initializeServer() {
@@ -33,24 +54,6 @@ async function initializeServer() {
     console.log("Initializing database pools...");
     await initDbs();
     console.log("Database pools initialized successfully");
-
-    app.use(
-      "/trpc",
-      createExpressMiddleware({
-        router: appRouter,
-        createContext: (opts: CreateExpressContextOptions) => {
-          const req = opts.req as CtxRequest;
-
-          return {
-            token: req.ctx?.token,
-          };
-        },
-      }),
-    );
-
-    app.get(/^\/(?!trpc).*/, (_, res) => {
-      res.sendFile(path.join(cdp, "index.html"));
-    });
 
     app.listen(port, () => {
       console.log(`Server listening on port ${port}`);
