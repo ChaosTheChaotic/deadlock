@@ -8,6 +8,6 @@
     "build:debug": "napi build -o ../../rlibs"
   },
   "devDependencies": {
-    "@napi-rs/cli": "^3.5.0"
+    "@napi-rs/cli": "^3.5.1"
   }
 }
