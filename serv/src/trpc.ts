@@ -1,5 +1,5 @@
 import { initTRPC, TRPCError } from "@trpc/server";
-import type { CreateNextContextOptions } from "@trpc/server/adapters/next";
+import type { Request, Response } from "express";
 import { z } from "zod";
 import * as Rapi from "./rlibs/index";
 
@@ -9,23 +9,13 @@ const passSchema = z.string().min(8);
 const ACCESS_TOKEN_MAX_AGE = 15 * 60 * 1000; // 15 minutes
 const REFRESH_TOKEN_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days
 
-export const createCtx = (opts: CreateNextContextOptions) => {
-  const { req, res } = opts;
-
-  const token = req.signedCookies?.["__Host-accessToken"];
-  const refreshToken = req.signedCookies?.["__Host-refreshToken"];
-
-  return {
-    token,
-    refreshToken,
-    req,
-    res,
-  };
-};
-
-export type Ctx = ReturnType<typeof createCtx> & {
+export interface Ctx {
+  token?: string;
+  refreshToken?: string;
+  req: Request;
+  res: Response;
   user?: { uid: string; email: string };
-};
+}
 
 export const t = initTRPC.context<Ctx>().create({
   errorFormatter({ shape, error }) {
@@ -43,7 +33,6 @@ export const t = initTRPC.context<Ctx>().create({
 });
 
 const authMiddleware = t.middleware(async ({ ctx, next, path }) => {
-  // Skip auth for login/register/refresh endpoints
   if (["login", "register", "refresh"].includes(path)) {
     return next({ ctx });
   }
@@ -58,17 +47,7 @@ const authMiddleware = t.middleware(async ({ ctx, next, path }) => {
 
   try {
     const claimsJson = await Rapi.checkAccessJwt(ctx.token);
-    let claims: Record<string, unknown>;
-
-    try {
-      claims = JSON.parse(claimsJson) as Record<string, unknown>;
-    } catch {
-      throw new TRPCError({
-        code: "UNAUTHORIZED",
-        message: "Invalid token format",
-        cause: "INVALID_TOKEN_FORMAT",
-      });
-    }
+    const claims = JSON.parse(claimsJson) as { uid: string; email: string };
 
     if (!claims.uid || !claims.email) {
       throw new TRPCError({
@@ -82,21 +61,17 @@ const authMiddleware = t.middleware(async ({ ctx, next, path }) => {
       ctx: {
         ...ctx,
         user: {
-          uid: claims.uid as string,
-          email: claims.email as string,
+          uid: claims.uid,
+          email: claims.email,
         },
       },
     });
   } catch (error) {
-    if (error instanceof TRPCError) {
-      throw error;
-    }
+    if (error instanceof TRPCError) throw error;
 
     const message =
-      error instanceof Error
-        ? error.message.includes("expired")
-          ? "Token has expired"
-          : error.message
+      error instanceof Error && error.message.includes("expired")
+        ? "Token has expired"
         : "Invalid token";
 
     throw new TRPCError({
@@ -106,9 +81,11 @@ const authMiddleware = t.middleware(async ({ ctx, next, path }) => {
     });
   }
 });
+
 // TODO: Implement rate limiting using redis
 // The following line would .use(rateLimitMiddleware)
-export const protectedProcedure = t.procedure.use(authMiddleware);
+export const protectedProcedure: typeof t.procedure =
+  t.procedure.use(authMiddleware);
 
 // TODO: Convert this to redis
 const refreshTokenStore = new Map<
@@ -153,29 +130,19 @@ export const appRouter = t.router({
       return await Rapi.deleteUser(input.email);
     }),
   login: t.procedure
-    .input(
-      z.object({
-        email: emailSchema,
-        pass: passSchema,
-      }),
-    )
+    .input(z.object({ email: emailSchema, pass: passSchema }))
     .mutation(async ({ input, ctx }) => {
       const isValid = await Rapi.checkPass(input.email, input.pass);
       if (!isValid) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
           message: "Invalid email or password",
-          cause: "INVALID_CREDENTIALS",
         });
       }
 
       const usrs = await Rapi.searchUsers(input.email);
       if (usrs.length === 0) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "User not found",
-          cause: "USER_NOT_FOUND",
-        });
+        throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
       }
 
       const usr = usrs[0];
@@ -192,32 +159,23 @@ export const appRouter = t.router({
         expiresAt,
       });
 
-      // Set HTTP-only cookies
-      if (ctx.res) {
-        const cookieOptions = {
-          httpOnly: true,
-          secure: true,
-          signed: true,
-          sameSite: "strict" as const,
-          path: "/",
-          maxAge: ACCESS_TOKEN_MAX_AGE,
-          priority: "high" as const,
-        };
-
-        ctx.res.cookie("__Host-accessToken", accessToken, cookieOptions);
-
-        ctx.res.cookie("__Host-refreshToken", refreshToken, {
-          ...cookieOptions,
-          maxAge: REFRESH_TOKEN_MAX_AGE,
-        });
-      }
-
-      return {
-        user: {
-          uid: usr.uid,
-          email: usr.email,
-        },
+      const cookieOptions = {
+        httpOnly: true,
+        secure: true,
+        signed: true,
+        sameSite: "strict" as const,
+        path: "/",
+        maxAge: ACCESS_TOKEN_MAX_AGE,
+        priority: "high" as const,
       };
+
+      ctx.res.cookie("__Host-accessToken", accessToken, cookieOptions);
+      ctx.res.cookie("__Host-refreshToken", refreshToken, {
+        ...cookieOptions,
+        maxAge: REFRESH_TOKEN_MAX_AGE,
+      });
+
+      return { user: { uid: usr.uid, email: usr.email } };
     }),
 
   register: t.procedure
@@ -290,12 +248,10 @@ export const appRouter = t.router({
 
   refresh: t.procedure.mutation(async ({ ctx }) => {
     const refreshToken = ctx.refreshToken;
-
     if (!refreshToken) {
       throw new TRPCError({
         code: "UNAUTHORIZED",
         message: "No refresh token provided",
-        cause: "NO_REFRESH_TOKEN",
       });
     }
 
@@ -307,39 +263,31 @@ export const appRouter = t.router({
         email: string;
       };
 
-      // Check if refresh token is valid in store
       const storedToken = refreshTokenStore.get(claims.jti);
       if (storedToken?.userId !== claims.uid) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
           message: "Invalid refresh token",
-          cause: "INVALID_REFRESH_TOKEN",
         });
       }
 
-      // Check if refresh token is expired
       if (storedToken.expiresAt < new Date()) {
         refreshTokenStore.delete(claims.jti);
         throw new TRPCError({
           code: "UNAUTHORIZED",
           message: "Refresh token expired",
-          cause: "REFRESH_TOKEN_EXPIRED",
         });
       }
 
-      // Generate new tokens
       const newAccessToken = await Rapi.genAccessJwt(claims.uid, claims.email);
       const [newRefreshToken, newJti] = await Rapi.genRefreshJwt(
         claims.uid,
         claims.email,
       );
 
-      // Update store
       refreshTokenStore.delete(claims.jti);
-
       const newExpiresAt = new Date();
       newExpiresAt.setDate(newExpiresAt.getDate() + 30);
-
       refreshTokenStore.set(newJti, {
         userId: claims.uid,
         email: claims.email,
@@ -347,41 +295,27 @@ export const appRouter = t.router({
         expiresAt: newExpiresAt,
       });
 
-      // Set new HTTP-only cookies
-      if (ctx.res) {
-        const cookieOptions = {
-          httpOnly: true,
-          secure: true,
-          signed: true,
-          sameSite: "strict" as const,
-          path: "/",
-          maxAge: ACCESS_TOKEN_MAX_AGE,
-          priority: "high" as const,
-        };
-
-        ctx.res.cookie("__Host-accessToken", newAccessToken, cookieOptions);
-
-        ctx.res.cookie("__Host-refreshToken", newRefreshToken, {
-          ...cookieOptions,
-          maxAge: REFRESH_TOKEN_MAX_AGE,
-        });
-      }
-
-      return {
-        user: {
-          uid: claims.uid,
-          email: claims.email,
-        },
+      const cookieOptions = {
+        httpOnly: true,
+        secure: true,
+        signed: true,
+        sameSite: "strict" as const,
+        path: "/",
+        maxAge: ACCESS_TOKEN_MAX_AGE,
       };
-    } catch (error) {
-      if (error instanceof TRPCError) {
-        throw error;
-      }
 
+      ctx.res.cookie("__Host-accessToken", newAccessToken, cookieOptions);
+      ctx.res.cookie("__Host-refreshToken", newRefreshToken, {
+        ...cookieOptions,
+        maxAge: REFRESH_TOKEN_MAX_AGE,
+      });
+
+      return { user: { uid: claims.uid, email: claims.email } };
+    } catch (error) {
+      if (error instanceof TRPCError) throw error;
       throw new TRPCError({
         code: "UNAUTHORIZED",
         message: "Failed to refresh token",
-        cause: "REFRESH_FAILED",
       });
     }
   }),
@@ -390,32 +324,25 @@ export const appRouter = t.router({
     .input(z.object({ jti: z.string().optional() }).optional())
     .mutation(async ({ ctx, input }) => {
       const refreshToken = ctx.refreshToken;
-
       if (refreshToken) {
         try {
           const claimsJson = await Rapi.checkRefreshJwt(refreshToken);
           const claims = JSON.parse(claimsJson) as { jti: string };
-
-          // Remove from store
           refreshTokenStore.delete(claims.jti);
         } catch {
-          // Token is invalid, continue with logout
+          /* ignore */
         }
       } else if (input?.jti) {
-        // Fallback to input jti if no cookie
         refreshTokenStore.delete(input.jti);
       }
 
-      // Clear cookies
-      if (ctx.res) {
-        ctx.res.clearCookie("__Host-accessToken", { path: "/", signed: true });
-        ctx.res.clearCookie("__Host-refreshToken", { path: "/", signed: true });
-      }
+      ctx.res.clearCookie("__Host-accessToken", { path: "/", signed: true });
+      ctx.res.clearCookie("__Host-refreshToken", { path: "/", signed: true });
 
       return { success: true };
     }),
 
-  me: protectedProcedure.query(async ({ ctx }) => {
+  me: protectedProcedure.query(({ ctx }) => {
     return {
       user: ctx.user,
     };

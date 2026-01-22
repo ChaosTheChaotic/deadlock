@@ -1,9 +1,6 @@
 import express from "express";
-import {
-  createExpressMiddleware,
-  CreateExpressContextOptions,
-} from "@trpc/server/adapters/express";
-import { appRouter } from "./trpc";
+import { createExpressMiddleware } from "@trpc/server/adapters/express";
+import { appRouter, Ctx } from "./trpc";
 import path from "path";
 import { initDbs } from "./rlibs";
 import cookieParser from "cookie-parser";
@@ -24,11 +21,14 @@ app.use(
   "/trpc",
   createExpressMiddleware({
     router: appRouter,
-    createContext: (opts: CreateExpressContextOptions) => {
-      const { req, res } = opts;
+    createContext: ({ req, res }): Ctx => {
+      const signedCookies = req.signedCookies as Record<
+        string,
+        string | undefined
+      >;
 
-      const token = req.signedCookies?.["__Host-accessToken"];
-      const refreshToken = req.signedCookies?.["__Host-refreshToken"];
+      const token = signedCookies["__Host-accessToken"];
+      const refreshToken = signedCookies["__Host-refreshToken"];
 
       return {
         token,

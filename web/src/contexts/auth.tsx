@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react"; // Added useCallback
 import { type User, trpc } from "@servs/index";
 import { AuthContext } from "@hooks/index";
 
@@ -28,11 +28,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     retry: false,
   });
 
-  // Initialize auth state
   useEffect(() => {
     const initAuth = async () => {
       try {
-        // Try to get current user
         const result = await meQuery.refetch();
         if (result.data?.user) {
           setUser(result.data.user);
@@ -44,50 +42,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    initAuth();
-  }, []);
+    void initAuth();
+  }, [meQuery]);
 
-  const login = async (email: string, password: string) => {
-    setIsLoading(true);
-    try {
-      const result = await loginMutation.mutateAsync({ email, pass: password });
-      setUser(result.user);
-    } catch (error) {
-      console.error("Login error:", error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const login = useCallback(
+    async (email: string, password: string) => {
+      setIsLoading(true);
+      try {
+        const result = await loginMutation.mutateAsync({
+          email,
+          pass: password,
+        });
+        setUser(result.user);
+      } catch (error) {
+        console.error("Login error:", error);
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [loginMutation],
+  );
 
-  const register = async (email: string, password?: string) => {
-    setIsLoading(true);
-    try {
-      const result = await registerMutation.mutateAsync({
-        email,
-        pass: password,
-      });
-      setUser(result.user);
-    } catch (error) {
-      console.error("Registration error:", error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const register = useCallback(
+    async (email: string, password?: string) => {
+      setIsLoading(true);
+      try {
+        const result = await registerMutation.mutateAsync({
+          email,
+          pass: password,
+        });
+        setUser(result.user);
+      } catch (error) {
+        console.error("Registration error:", error);
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [registerMutation],
+  );
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await logoutMutation.mutateAsync();
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
       setUser(null);
-      utils.invalidate();
+      void utils.invalidate();
     }
-  };
+  }, [logoutMutation, utils]);
 
-  const refreshSession = async (): Promise<void> => {
+  const refreshSession = useCallback(async (): Promise<void> => {
     if (isRefreshing) return;
 
     setIsRefreshing(true);
@@ -100,9 +107,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsRefreshing(false);
     }
-  };
+  }, [isRefreshing, refreshMutation]);
 
-  // Periodically refresh access token
   useEffect(() => {
     if (!user) return;
 
@@ -116,10 +122,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       },
       14 * 60 * 1000,
-    ); // Refresh every 14 minutes
+    );
 
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, logout, refreshSession]);
 
   return (
     <AuthContext.Provider
