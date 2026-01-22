@@ -1,7 +1,7 @@
-import { createTRPCReact } from '@trpc/react-query';
-import { httpBatchLink } from '@trpc/client';
-import type { AppRouter } from '@serv/trpc';
-import { QueryClient } from '@tanstack/react-query';
+import { createTRPCReact } from "@trpc/react-query";
+import { httpBatchLink } from "@trpc/client";
+import type { AppRouter } from "@serv/trpc";
+import { QueryClient } from "@tanstack/react-query";
 
 export const trpc = createTRPCReact<AppRouter>();
 export const qc = new QueryClient({
@@ -16,14 +16,14 @@ export const qc = new QueryClient({
 export const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({
-      url: '/trpc',
+      url: "/trpc",
       headers() {
         return {};
       },
       fetch(url, options) {
         return fetch(url, {
           ...options,
-          credentials: 'include', // Important: send cookies
+          credentials: "include", // Important: send cookies
         });
       },
     }),

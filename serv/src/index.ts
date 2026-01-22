@@ -17,7 +17,7 @@ app.use(express.static(cdp));
 app.use(express.json());
 app.use(helmet());
 
-const SECRET = process.env.COOKIE_SECRET || "stupid";
+const SECRET = process.env.COOKIE_SECRET ?? "stupid";
 app.use(cookieParser(SECRET));
 
 app.use(
@@ -26,9 +26,9 @@ app.use(
     router: appRouter,
     createContext: (opts: CreateExpressContextOptions) => {
       const { req, res } = opts;
-      
-      const token = req.signedCookies?.['__Host-accessToken'];
-      const refreshToken = req.signedCookies?.['__Host-refreshToken'];
+
+      const token = req.signedCookies?.["__Host-accessToken"];
+      const refreshToken = req.signedCookies?.["__Host-refreshToken"];
 
       return {
         token,
@@ -41,7 +41,10 @@ app.use(
 );
 
 app.use((_, res, next) => {
-  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.setHeader(
+    "Strict-Transport-Security",
+    "max-age=31536000; includeSubDomains",
+  );
   next();
 });
 

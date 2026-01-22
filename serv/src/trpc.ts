@@ -12,8 +12,8 @@ const REFRESH_TOKEN_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days
 export const createCtx = (opts: CreateNextContextOptions) => {
   const { req, res } = opts;
 
-  const token = req.signedCookies?.['__Host-accessToken'];
-  const refreshToken = req.signedCookies?.['__Host-refreshToken'];
+  const token = req.signedCookies?.["__Host-accessToken"];
+  const refreshToken = req.signedCookies?.["__Host-refreshToken"];
 
   return {
     token,
@@ -194,22 +194,22 @@ export const appRouter = t.router({
 
       // Set HTTP-only cookies
       if (ctx.res) {
-	const cookieOptions = {
-	    httpOnly: true,
-	    secure: true,
-	    signed: true,
-	    sameSite: 'strict' as const,
-	    path: '/',
-	    maxAge: ACCESS_TOKEN_MAX_AGE,
-	    priority: 'high' as const,
-	  };
-	
-	  ctx.res.cookie('__Host-accessToken', accessToken, cookieOptions);
-	  
-	  ctx.res.cookie('__Host-refreshToken', refreshToken, {
-	    ...cookieOptions,
-	    maxAge: REFRESH_TOKEN_MAX_AGE,
-	  });
+        const cookieOptions = {
+          httpOnly: true,
+          secure: true,
+          signed: true,
+          sameSite: "strict" as const,
+          path: "/",
+          maxAge: ACCESS_TOKEN_MAX_AGE,
+          priority: "high" as const,
+        };
+
+        ctx.res.cookie("__Host-accessToken", accessToken, cookieOptions);
+
+        ctx.res.cookie("__Host-refreshToken", refreshToken, {
+          ...cookieOptions,
+          maxAge: REFRESH_TOKEN_MAX_AGE,
+        });
       }
 
       return {
@@ -245,7 +245,10 @@ export const appRouter = t.router({
       );
 
       const accessToken = await Rapi.genAccessJwt(user.uid, user.email);
-      const [refreshToken, jti] = await Rapi.genRefreshJwt(user.uid, user.email);
+      const [refreshToken, jti] = await Rapi.genRefreshJwt(
+        user.uid,
+        user.email,
+      );
 
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 30);
@@ -259,22 +262,22 @@ export const appRouter = t.router({
 
       // Set HTTP-only cookies
       if (ctx.res) {
-	const cookieOptions = {
-	    httpOnly: true,
-	    secure: true,
-	    signed: true,
-	    sameSite: 'strict' as const,
-	    path: '/',
-	    maxAge: ACCESS_TOKEN_MAX_AGE,
-	    priority: 'high' as const,
-	  };
-	
-	  ctx.res.cookie('__Host-accessToken', accessToken, cookieOptions);
-	  
-	  ctx.res.cookie('__Host-refreshToken', refreshToken, {
-	    ...cookieOptions,
-	    maxAge: REFRESH_TOKEN_MAX_AGE,
-	  });
+        const cookieOptions = {
+          httpOnly: true,
+          secure: true,
+          signed: true,
+          sameSite: "strict" as const,
+          path: "/",
+          maxAge: ACCESS_TOKEN_MAX_AGE,
+          priority: "high" as const,
+        };
+
+        ctx.res.cookie("__Host-accessToken", accessToken, cookieOptions);
+
+        ctx.res.cookie("__Host-refreshToken", refreshToken, {
+          ...cookieOptions,
+          maxAge: REFRESH_TOKEN_MAX_AGE,
+        });
       }
 
       return {
@@ -285,108 +288,114 @@ export const appRouter = t.router({
       };
     }),
 
-  refresh: t.procedure
-    .mutation(async ({ ctx }) => {
-      const refreshToken = ctx.refreshToken;
-      
-      if (!refreshToken) {
+  refresh: t.procedure.mutation(async ({ ctx }) => {
+    const refreshToken = ctx.refreshToken;
+
+    if (!refreshToken) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "No refresh token provided",
+        cause: "NO_REFRESH_TOKEN",
+      });
+    }
+
+    try {
+      const claimsJson = await Rapi.checkRefreshJwt(refreshToken);
+      const claims = JSON.parse(claimsJson) as {
+        jti: string;
+        uid: string;
+        email: string;
+      };
+
+      // Check if refresh token is valid in store
+      const storedToken = refreshTokenStore.get(claims.jti);
+      if (storedToken?.userId !== claims.uid) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message: "No refresh token provided",
-          cause: "NO_REFRESH_TOKEN",
+          message: "Invalid refresh token",
+          cause: "INVALID_REFRESH_TOKEN",
         });
       }
 
-      try {
-        const claimsJson = await Rapi.checkRefreshJwt(refreshToken);
-        const claims = JSON.parse(claimsJson) as { jti: string; uid: string; email: string };
-
-        // Check if refresh token is valid in store
-        const storedToken = refreshTokenStore.get(claims.jti);
-        if (!storedToken || storedToken.userId !== claims.uid) {
-          throw new TRPCError({
-            code: "UNAUTHORIZED",
-            message: "Invalid refresh token",
-            cause: "INVALID_REFRESH_TOKEN",
-          });
-        }
-
-        // Check if refresh token is expired
-        if (storedToken.expiresAt < new Date()) {
-          refreshTokenStore.delete(claims.jti);
-          throw new TRPCError({
-            code: "UNAUTHORIZED",
-            message: "Refresh token expired",
-            cause: "REFRESH_TOKEN_EXPIRED",
-          });
-        }
-
-        // Generate new tokens
-        const newAccessToken = await Rapi.genAccessJwt(claims.uid, claims.email);
-        const [newRefreshToken, newJti] = await Rapi.genRefreshJwt(claims.uid, claims.email);
-
-        // Update store
+      // Check if refresh token is expired
+      if (storedToken.expiresAt < new Date()) {
         refreshTokenStore.delete(claims.jti);
-        
-        const newExpiresAt = new Date();
-        newExpiresAt.setDate(newExpiresAt.getDate() + 30);
-        
-        refreshTokenStore.set(newJti, {
-          userId: claims.uid,
-          email: claims.email,
-          jti: newJti,
-          expiresAt: newExpiresAt,
-        });
-
-        // Set new HTTP-only cookies
-        if (ctx.res) {
-	  const cookieOptions = {
-	      httpOnly: true,
-	      secure: true,
-	      signed: true,
-	      sameSite: 'strict' as const,
-	      path: '/',
-	      maxAge: ACCESS_TOKEN_MAX_AGE,
-	      priority: 'high' as const,
-	    };
-	  
-	    ctx.res.cookie('__Host-accessToken', newAccessToken, cookieOptions);
-	    
-	    ctx.res.cookie('__Host-refreshToken', newRefreshToken, {
-	      ...cookieOptions,
-	      maxAge: REFRESH_TOKEN_MAX_AGE,
-	    });
-        }
-
-        return {
-          user: {
-            uid: claims.uid,
-            email: claims.email,
-          },
-        };
-      } catch (error) {
-        if (error instanceof TRPCError) {
-          throw error;
-        }
-        
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message: "Failed to refresh token",
-          cause: "REFRESH_FAILED",
+          message: "Refresh token expired",
+          cause: "REFRESH_TOKEN_EXPIRED",
         });
       }
-    }),
+
+      // Generate new tokens
+      const newAccessToken = await Rapi.genAccessJwt(claims.uid, claims.email);
+      const [newRefreshToken, newJti] = await Rapi.genRefreshJwt(
+        claims.uid,
+        claims.email,
+      );
+
+      // Update store
+      refreshTokenStore.delete(claims.jti);
+
+      const newExpiresAt = new Date();
+      newExpiresAt.setDate(newExpiresAt.getDate() + 30);
+
+      refreshTokenStore.set(newJti, {
+        userId: claims.uid,
+        email: claims.email,
+        jti: newJti,
+        expiresAt: newExpiresAt,
+      });
+
+      // Set new HTTP-only cookies
+      if (ctx.res) {
+        const cookieOptions = {
+          httpOnly: true,
+          secure: true,
+          signed: true,
+          sameSite: "strict" as const,
+          path: "/",
+          maxAge: ACCESS_TOKEN_MAX_AGE,
+          priority: "high" as const,
+        };
+
+        ctx.res.cookie("__Host-accessToken", newAccessToken, cookieOptions);
+
+        ctx.res.cookie("__Host-refreshToken", newRefreshToken, {
+          ...cookieOptions,
+          maxAge: REFRESH_TOKEN_MAX_AGE,
+        });
+      }
+
+      return {
+        user: {
+          uid: claims.uid,
+          email: claims.email,
+        },
+      };
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        throw error;
+      }
+
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "Failed to refresh token",
+        cause: "REFRESH_FAILED",
+      });
+    }
+  }),
 
   logout: t.procedure
     .input(z.object({ jti: z.string().optional() }).optional())
     .mutation(async ({ ctx, input }) => {
       const refreshToken = ctx.refreshToken;
-      
+
       if (refreshToken) {
         try {
           const claimsJson = await Rapi.checkRefreshJwt(refreshToken);
           const claims = JSON.parse(claimsJson) as { jti: string };
-          
+
           // Remove from store
           refreshTokenStore.delete(claims.jti);
         } catch {
@@ -399,19 +408,18 @@ export const appRouter = t.router({
 
       // Clear cookies
       if (ctx.res) {
-	ctx.res.clearCookie('__Host-accessToken', { path: '/', signed: true });
-	ctx.res.clearCookie('__Host-refreshToken', { path: '/', signed: true });
+        ctx.res.clearCookie("__Host-accessToken", { path: "/", signed: true });
+        ctx.res.clearCookie("__Host-refreshToken", { path: "/", signed: true });
       }
 
       return { success: true };
     }),
 
-  me: protectedProcedure
-    .query(async ({ ctx }) => {
-      return {
-        user: ctx.user,
-      };
-    }),
+  me: protectedProcedure.query(async ({ ctx }) => {
+    return {
+      user: ctx.user,
+    };
+  }),
 });
 
 export type AppRouter = typeof appRouter;

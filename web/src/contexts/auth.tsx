@@ -37,8 +37,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (result.data?.user) {
           setUser(result.data.user);
         }
-      } catch (error) {
-        console.log("No valid session found");
+      } catch (e) {
+        console.log(`No valid session found: ${e}`);
       } finally {
         setIsLoading(false);
       }
@@ -89,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshSession = async (): Promise<void> => {
     if (isRefreshing) return;
-    
+
     setIsRefreshing(true);
     try {
       const result = await refreshMutation.mutateAsync();
@@ -106,14 +106,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!user) return;
 
-    const interval = setInterval(async () => {
-      try {
-        await refreshSession();
-      } catch (error) {
-        console.log("Session refresh failed, logging out");
-        await logout();
-      }
-    }, 14 * 60 * 1000); // Refresh every 14 minutes
+    const interval = setInterval(
+      async () => {
+        try {
+          await refreshSession();
+        } catch (e) {
+          console.log(`Session refresh failed, logging out: ${e}`);
+          await logout();
+        }
+      },
+      14 * 60 * 1000,
+    ); // Refresh every 14 minutes
 
     return () => clearInterval(interval);
   }, [user]);
