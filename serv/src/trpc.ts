@@ -12,10 +12,8 @@ const REFRESH_TOKEN_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days
 export const createCtx = (opts: CreateNextContextOptions) => {
   const { req, res } = opts;
 
-  const cookies = req.cookies || {};
-  const token = cookies.accessToken;
-
-  const refreshToken = cookies.refreshToken;
+  const token = req.signedCookies?.['__Host-accessToken'];
+  const refreshToken = req.signedCookies?.['__Host-refreshToken'];
 
   return {
     token,
@@ -196,10 +194,22 @@ export const appRouter = t.router({
 
       // Set HTTP-only cookies
       if (ctx.res) {
-        ctx.res.setHeader("Set-Cookie", [
-          `__Host-accessToken=${accessToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${ACCESS_TOKEN_MAX_AGE}; Priority=High; Signed`,
-          `__Host-refreshToken=${refreshToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${REFRESH_TOKEN_MAX_AGE}; Priority=High; Signed`,
-        ]);
+	const cookieOptions = {
+	    httpOnly: true,
+	    secure: true,
+	    signed: true,
+	    sameSite: 'strict' as const,
+	    path: '/',
+	    maxAge: ACCESS_TOKEN_MAX_AGE,
+	    priority: 'high' as const,
+	  };
+	
+	  ctx.res.cookie('__Host-accessToken', accessToken, cookieOptions);
+	  
+	  ctx.res.cookie('__Host-refreshToken', refreshToken, {
+	    ...cookieOptions,
+	    maxAge: REFRESH_TOKEN_MAX_AGE,
+	  });
       }
 
       return {
@@ -249,10 +259,22 @@ export const appRouter = t.router({
 
       // Set HTTP-only cookies
       if (ctx.res) {
-        ctx.res.setHeader("Set-Cookie", [
-          `__Host-accessToken=${accessToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${ACCESS_TOKEN_MAX_AGE}; Priority=High; Signed`,
-          `__Host-refreshToken=${refreshToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${REFRESH_TOKEN_MAX_AGE}; Priority=High; Signed`,
-        ]);
+	const cookieOptions = {
+	    httpOnly: true,
+	    secure: true,
+	    signed: true,
+	    sameSite: 'strict' as const,
+	    path: '/',
+	    maxAge: ACCESS_TOKEN_MAX_AGE,
+	    priority: 'high' as const,
+	  };
+	
+	  ctx.res.cookie('__Host-accessToken', accessToken, cookieOptions);
+	  
+	  ctx.res.cookie('__Host-refreshToken', refreshToken, {
+	    ...cookieOptions,
+	    maxAge: REFRESH_TOKEN_MAX_AGE,
+	  });
       }
 
       return {
@@ -318,10 +340,22 @@ export const appRouter = t.router({
 
         // Set new HTTP-only cookies
         if (ctx.res) {
-          ctx.res.setHeader("Set-Cookie", [
-            `__Host-accessToken=${newAccessToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${ACCESS_TOKEN_MAX_AGE}; Priority=High; Signed`,
-            `__Host-refreshToken=${newRefreshToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${REFRESH_TOKEN_MAX_AGE}; Priority=High; Signed`,
-          ]);
+	  const cookieOptions = {
+	      httpOnly: true,
+	      secure: true,
+	      signed: true,
+	      sameSite: 'strict' as const,
+	      path: '/',
+	      maxAge: ACCESS_TOKEN_MAX_AGE,
+	      priority: 'high' as const,
+	    };
+	  
+	    ctx.res.cookie('__Host-accessToken', newAccessToken, cookieOptions);
+	    
+	    ctx.res.cookie('__Host-refreshToken', newRefreshToken, {
+	      ...cookieOptions,
+	      maxAge: REFRESH_TOKEN_MAX_AGE,
+	    });
         }
 
         return {
@@ -365,10 +399,8 @@ export const appRouter = t.router({
 
       // Clear cookies
       if (ctx.res) {
-        ctx.res.setHeader("Set-Cookie", [
-          "__Host-accessToken=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0",
-          "__Host-refreshToken=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0",
-        ]);
+	ctx.res.clearCookie('__Host-accessToken', { path: '/', signed: true });
+	ctx.res.clearCookie('__Host-refreshToken', { path: '/', signed: true });
       }
 
       return { success: true };

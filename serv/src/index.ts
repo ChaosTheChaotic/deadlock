@@ -16,7 +16,9 @@ const cdp = path.join(__dirname, "../../web/dist");
 app.use(express.static(cdp));
 app.use(express.json());
 app.use(helmet());
-app.use(cookieParser());
+
+const SECRET = process.env.COOKIE_SECRET || "stupid";
+app.use(cookieParser(SECRET));
 
 app.use(
   "/trpc",
@@ -25,10 +27,8 @@ app.use(
     createContext: (opts: CreateExpressContextOptions) => {
       const { req, res } = opts;
       
-      const cookies = req.cookies || {};
-      const token = cookies.accessToken;
-
-      const refreshToken = req.cookies?.refreshToken;
+      const token = req.signedCookies?.['__Host-accessToken'];
+      const refreshToken = req.signedCookies?.['__Host-refreshToken'];
 
       return {
         token,
