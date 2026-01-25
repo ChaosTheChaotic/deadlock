@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:15-alpine
+    image: postgres:15-bookworm
     container_name: deadlock-postgres
     environment:
       POSTGRES_USER: ${DB_USER:-postgres}
