@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react"; // Added useCallback
-import { type User, trpc } from "@servs/index";
+import { type User, trpc, qc } from "@servs/index";
 import { AuthContext } from "@hooks/index";
 
 export interface AuthContextType {
@@ -22,7 +22,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginMutation = trpc.login.useMutation();
   const registerMutation = trpc.register.useMutation();
   const refreshMutation = trpc.refresh.useMutation();
-  const logoutMutation = trpc.logout.useMutation();
+  const logoutMutation = trpc.logout.useMutation({
+    onMutate: async () => {
+      await qc.cancelQueries();
+    },
+    onSuccess: () => {
+      qc.clear();
+      window.location.href = "/login";
+    }
+  });
   const meQuery = trpc.me.useQuery(undefined, {
     enabled: false,
     retry: false,

@@ -33,7 +33,7 @@ export const t = initTRPC.context<Ctx>().create({
 });
 
 const authMiddleware = t.middleware(async ({ ctx, next, path }) => {
-  if (["login", "register", "refresh"].includes(path)) {
+  if (["login", "register", "refresh", "logout"].includes(path)) {
     return next({ ctx });
   }
 
@@ -336,8 +336,15 @@ export const appRouter = t.router({
         refreshTokenStore.delete(input.jti);
       }
 
-      ctx.res.clearCookie("__Host-accessToken", { path: "/", signed: true });
-      ctx.res.clearCookie("__Host-refreshToken", { path: "/", signed: true });
+      const clearOptions = {
+        path: "/",
+        signed: true,
+        secure: true,
+        sameSite: "strict" as const,
+      };
+
+      ctx.res.clearCookie("__Host-accessToken", clearOptions);
+      ctx.res.clearCookie("__Host-refreshToken", clearOptions);
 
       return { success: true };
     }),
