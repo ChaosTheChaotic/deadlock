@@ -98,6 +98,16 @@ const refreshTokenStore = new Map<
   }
 >();
 
+const COOKIE_OPTS = {
+  httpOnly: true,
+  secure: true,
+  signed: true,
+  sameSite: "strict" as const,
+  path: "/",
+  maxAge: ACCESS_TOKEN_MAX_AGE,
+  priority: "high" as const,
+} as const;
+
 export const appRouter = t.router({
   searchUsers: protectedProcedure
     .input(z.object({ email: z.string() }))
@@ -159,19 +169,9 @@ export const appRouter = t.router({
         expiresAt,
       });
 
-      const cookieOptions = {
-        httpOnly: true,
-        secure: true,
-        signed: true,
-        sameSite: "strict" as const,
-        path: "/",
-        maxAge: ACCESS_TOKEN_MAX_AGE,
-        priority: "high" as const,
-      };
-
-      ctx.res.cookie("__Host-accessToken", accessToken, cookieOptions);
+      ctx.res.cookie("__Host-accessToken", accessToken, COOKIE_OPTS);
       ctx.res.cookie("__Host-refreshToken", refreshToken, {
-        ...cookieOptions,
+        ...COOKIE_OPTS,
         maxAge: REFRESH_TOKEN_MAX_AGE,
       });
 
@@ -220,20 +220,10 @@ export const appRouter = t.router({
 
       // Set HTTP-only cookies
       if (ctx.res) {
-        const cookieOptions = {
-          httpOnly: true,
-          secure: true,
-          signed: true,
-          sameSite: "strict" as const,
-          path: "/",
-          maxAge: ACCESS_TOKEN_MAX_AGE,
-          priority: "high" as const,
-        };
-
-        ctx.res.cookie("__Host-accessToken", accessToken, cookieOptions);
+        ctx.res.cookie("__Host-accessToken", accessToken, COOKIE_OPTS);
 
         ctx.res.cookie("__Host-refreshToken", refreshToken, {
-          ...cookieOptions,
+          ...COOKIE_OPTS,
           maxAge: REFRESH_TOKEN_MAX_AGE,
         });
       }
@@ -295,18 +285,9 @@ export const appRouter = t.router({
         expiresAt: newExpiresAt,
       });
 
-      const cookieOptions = {
-        httpOnly: true,
-        secure: true,
-        signed: true,
-        sameSite: "strict" as const,
-        path: "/",
-        maxAge: ACCESS_TOKEN_MAX_AGE,
-      };
-
-      ctx.res.cookie("__Host-accessToken", newAccessToken, cookieOptions);
+      ctx.res.cookie("__Host-accessToken", newAccessToken, COOKIE_OPTS);
       ctx.res.cookie("__Host-refreshToken", newRefreshToken, {
-        ...cookieOptions,
+        ...COOKIE_OPTS,
         maxAge: REFRESH_TOKEN_MAX_AGE,
       });
 
@@ -336,15 +317,8 @@ export const appRouter = t.router({
         refreshTokenStore.delete(input.jti);
       }
 
-      const clearOptions = {
-        path: "/",
-        signed: true,
-        secure: true,
-        sameSite: "strict" as const,
-      };
-
-      ctx.res.clearCookie("__Host-accessToken", clearOptions);
-      ctx.res.clearCookie("__Host-refreshToken", clearOptions);
+      ctx.res.clearCookie("__Host-accessToken", COOKIE_OPTS);
+      ctx.res.clearCookie("__Host-refreshToken", COOKIE_OPTS);
 
       return { success: true };
     }),

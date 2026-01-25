@@ -29,7 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     onSuccess: () => {
       qc.clear();
       window.location.href = "/login";
-    }
+    },
   });
   const meQuery = trpc.me.useQuery(undefined, {
     enabled: false,
