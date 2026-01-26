@@ -1,6 +1,6 @@
 use deadpool_postgres::{ManagerConfig, Pool, RecyclingMethod};
-use tokio_postgres::NoTls;
 use shared_types::{DB_POOL_GRIDS, DB_POOL_USERS};
+use tokio_postgres::NoTls;
 
 async fn init_db_pool(dbname: &str) -> Result<Pool, String> {
     dotenv::dotenv().ok();

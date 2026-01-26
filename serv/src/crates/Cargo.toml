@@ -1,0 +1,29 @@
+[workspace]
+resolver = "3"
+members = ["shared_types", "db", "user_handler", "jwt_handler", "napi_exports", "redis_handler"]
+
+[workspace.dependencies]
+# Internal Workspace Crates
+shared_types = { path = "shared_types" }
+db = { path = "db" }
+user_handler = { path = "user_handler" }
+jwt_handler = { path = "jwt_handler" }
+redis_handler = { path = "redis_handler" }
+
+# External Dependencies
+argon2 = "0.5.3"
+deadpool-postgres = "0.14.1"
+dotenv = "0.15.0"
+napi = "3.7.0"
+napi-derive = "3.4.0"
+napi-build = "2.3.1"
+rand_core = { version = "0.6.4", features = ["getrandom"] }
+tokio = "1.48.0"
+tokio-postgres = "0.7.15"
+jsonwebtoken = { version = "10.2.0", features = ["aws_lc_rs"] }
+serde = "1.0.228"
+serde_json = "1.0.145"
+chrono = "0.4.42"
+uuid = "1.19.0"
+deadpool-redis = "0.22.1"
+redis = "1.0.2"

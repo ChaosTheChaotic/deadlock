@@ -1,31 +1,62 @@
 import express from "express";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { appRouter } from "./trpc";
+import { appRouter, Ctx } from "./trpc";
 import path from "path";
 import { initDbs } from "./rlibs";
+import cookieParser from "cookie-parser";
+import helmet from "helmet";
 
 const app = express();
 const port = process.env.PORT ?? 8888;
 
 const cdp = path.join(__dirname, "../../web/dist");
 app.use(express.static(cdp));
+app.use(express.json());
+app.use(helmet());
+
+const SECRET = process.env.COOKIE_SECRET ?? "stupid";
+app.use(cookieParser(SECRET));
+
+app.use(
+  "/trpc",
+  createExpressMiddleware({
+    router: appRouter,
+    createContext: ({ req, res }): Ctx => {
+      const signedCookies = req.signedCookies as Record<
+        string,
+        string | undefined
+      >;
+
+      const token = signedCookies["__Host-accessToken"];
+      const refreshToken = signedCookies["__Host-refreshToken"];
+
+      return {
+        token,
+        refreshToken,
+        req,
+        res,
+      };
+    },
+  }),
+);
+
+app.use((_, res, next) => {
+  res.setHeader(
+    "Strict-Transport-Security",
+    "max-age=31536000; includeSubDomains",
+  );
+  next();
+});
+
+app.get(/^\/(?!trpc).*/, (_, res) => {
+  res.sendFile(path.join(cdp, "index.html"));
+});
 
 async function initializeServer() {
   try {
     console.log("Initializing database pools...");
     await initDbs();
     console.log("Database pools initialized successfully");
-
-    app.use(
-      "/trpc",
-      createExpressMiddleware({
-        router: appRouter,
-      }),
-    );
-
-    app.get(/^\/(?!trpc).*/, (_, res) => {
-      res.sendFile(path.join(cdp, "index.html"));
-    });
 
     app.listen(port, () => {
       console.log(`Server listening on port ${port}`);
