@@ -152,7 +152,7 @@ export const appRouter = t.router({
         jti,
         usr.uid,
         usr.email,
-	REFRESH_TOKEN_MAX_AGE
+        REFRESH_TOKEN_MAX_AGE,
       );
 
       ctx.res.cookie("__Host-accessToken", accessToken, COOKIE_OPTS);
@@ -198,7 +198,7 @@ export const appRouter = t.router({
         jti,
         user.uid,
         user.email,
-	REFRESH_TOKEN_MAX_AGE
+        REFRESH_TOKEN_MAX_AGE,
       );
 
       // Set HTTP-only cookies
@@ -246,7 +246,7 @@ export const appRouter = t.router({
 
       // Get the stored token data to ensure it matches
       const storedToken = await Rapi.getRefreshToken(claims.jti);
-      if (!storedToken || storedToken.userId !== claims.uid) {
+      if (storedToken?.userId !== claims.uid) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
           message: "Invalid refresh token",
@@ -263,7 +263,7 @@ export const appRouter = t.router({
         newJti,
         claims.uid,
         claims.email,
-	REFRESH_TOKEN_MAX_AGE
+        REFRESH_TOKEN_MAX_AGE,
       );
 
       await Rapi.deleteRefreshToken(claims.jti);
@@ -288,7 +288,7 @@ export const appRouter = t.router({
     .input(z.object({ jti: z.string().optional() }).optional())
     .mutation(async ({ ctx, input }) => {
       const refreshToken = ctx.refreshToken;
-      
+
       if (refreshToken) {
         try {
           const claimsJson = await Rapi.checkRefreshJwt(refreshToken);

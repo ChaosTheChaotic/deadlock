@@ -94,7 +94,9 @@ pub async fn store_refresh_token(
 }
 
 #[napi]
-pub async fn get_refresh_token(jti: String) -> napi::Result<Option<redis_handler::RefreshTokenData>> {
+pub async fn get_refresh_token(
+    jti: String,
+) -> napi::Result<Option<redis_handler::RefreshTokenData>> {
     redis_handler::get_refresh_token(jti)
         .await
         .map_err(|e| napi::Error::from_reason(format!("Failed to get refresh token: {}", e)))
@@ -111,7 +113,9 @@ pub async fn delete_refresh_token(jti: String) -> napi::Result<bool> {
 pub async fn delete_user_refresh_tokens(user_id: String) -> napi::Result<u32> {
     redis_handler::delete_user_refresh_tokens(user_id)
         .await
-        .map_err(|e| napi::Error::from_reason(format!("Failed to delete user refresh tokens: {}", e)))
+        .map_err(|e| {
+            napi::Error::from_reason(format!("Failed to delete user refresh tokens: {}", e))
+        })
 }
 
 #[napi]
