@@ -2,7 +2,7 @@ import express from "express";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter, Ctx } from "./trpc";
 import path from "path";
-import { initDbs } from "./rlibs";
+import { initDbs, initRedis } from "./rlibs";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 
@@ -57,6 +57,8 @@ async function initializeServer() {
     console.log("Initializing database pools...");
     await initDbs();
     console.log("Database pools initialized successfully");
+    await initRedis();
+    console.log("Redis initialized successfully");
 
     app.listen(port, () => {
       console.log(`Server listening on port ${port}`);

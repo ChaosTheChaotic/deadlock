@@ -73,3 +73,57 @@ pub async fn rotate_refresh_jwt(token: String) -> napi::Result<(String, String, 
         .await
         .map_err(|e| napi::Error::from_reason(e.to_string()))
 }
+
+#[napi]
+pub async fn init_redis() -> napi::Result<()> {
+    redis_handler::init_redis()
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to initialize Redis: {}", e)))
+}
+
+#[napi]
+pub async fn store_refresh_token(
+    jti: String,
+    user_id: String,
+    email: String,
+    expires_in_seconds: i64,
+) -> napi::Result<bool> {
+    redis_handler::store_refresh_token(jti, user_id, email, expires_in_seconds)
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to store refresh token: {}", e)))
+}
+
+#[napi]
+pub async fn get_refresh_token(jti: String) -> napi::Result<Option<redis_handler::RefreshTokenData>> {
+    redis_handler::get_refresh_token(jti)
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to get refresh token: {}", e)))
+}
+
+#[napi]
+pub async fn delete_refresh_token(jti: String) -> napi::Result<bool> {
+    redis_handler::delete_refresh_token(jti)
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to delete refresh token: {}", e)))
+}
+
+#[napi]
+pub async fn delete_user_refresh_tokens(user_id: String) -> napi::Result<u32> {
+    redis_handler::delete_user_refresh_tokens(user_id)
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to delete user refresh tokens: {}", e)))
+}
+
+#[napi]
+pub async fn validate_refresh_token(jti: String) -> napi::Result<bool> {
+    redis_handler::validate_refresh_token(jti)
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to validate refresh token: {}", e)))
+}
+
+#[napi]
+pub async fn cleanup_expired_tokens() -> napi::Result<u32> {
+    redis_handler::cleanup_expired_tokens()
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to cleanup expired tokens: {}", e)))
+}

@@ -6,7 +6,9 @@ edition = "2024"
 [dependencies]
 dotenv = { workspace = true }
 deadpool-redis = { workspace = true }
-redis = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 tokio = { workspace = true }
+napi = { workspace = true }
+napi-derive = { workspace = true }
+chrono = { workspace = true }

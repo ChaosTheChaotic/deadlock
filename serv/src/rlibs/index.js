@@ -18,4 +18,10 @@ export const {
   genAccessJwt,
   genRefreshJwt,
   rotateRefreshJwt,
+  cleanupExpiredTokens,
+  deleteRefreshToken,
+  deleteUserRefreshToken,
+  getRefreshToken,
+  initRedis,
+  storeRefreshToken,
 } = ebinding;
