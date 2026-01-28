@@ -24,4 +24,11 @@ export const {
   getRefreshToken,
   initRedis,
   storeRefreshToken,
+  checkRateLimit,
+  flushRedis,
+  getAllRefreshTokens,
+  getRateLimitStats,
+  getRedisInfo,
+  resetRateLimit,
+  cleanupRateLimitKeys,
 } = ebinding;

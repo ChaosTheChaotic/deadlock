@@ -5,6 +5,7 @@ import path from "path";
 import { initDbs, initRedis } from "./rlibs";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
+import { cleanupExpiredTokens, cleanupRateLimitKeys } from "./rlibs/index";
 
 const app = express();
 const port = process.env.PORT ?? 8888;
@@ -27,6 +28,10 @@ app.use(
         string | undefined
       >;
 
+      const ip = req.headers["x-forwarded-for"]
+        ? (req.headers["x-forwarded-for"] as string).split(",")[0].trim()
+        : req.socket.remoteAddress;
+
       const token = signedCookies["__Host-accessToken"];
       const refreshToken = signedCookies["__Host-refreshToken"];
 
@@ -35,6 +40,7 @@ app.use(
         refreshToken,
         req,
         res,
+        ip,
       };
     },
   }),
@@ -52,6 +58,35 @@ app.get(/^\/(?!trpc).*/, (_, res) => {
   res.sendFile(path.join(cdp, "index.html"));
 });
 
+async function initializeScheduledCleanups() {
+  const CLEANUP_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
+
+  async function runCleanup() {
+    try {
+      console.log("Running scheduled cleanup...");
+
+      // Clean up expired rate limit keys
+      const rateLimitCleaned = await cleanupRateLimitKeys();
+      console.log(`Cleaned up ${rateLimitCleaned} rate limit keys`);
+
+      const tokenCleaned = await cleanupExpiredTokens();
+      console.log(`Cleaned up ${tokenCleaned} expired refresh tokens`);
+    } catch (error) {
+      console.error("Cleanup failed:", error);
+    }
+  }
+
+  await runCleanup();
+
+  // Schedule periodic cleanup
+  setInterval(() => {
+    runCleanup().catch((error) => {
+      console.error("Cleanup failed:", error);
+    });
+  }, CLEANUP_INTERVAL_MS);
+  console.log(`Scheduled cleanup every ${CLEANUP_INTERVAL_MS / 60000} minutes`);
+}
+
 async function initializeServer() {
   try {
     console.log("Initializing database pools...");
@@ -65,6 +100,8 @@ async function initializeServer() {
       console.log(`Frontend served from: ${cdp}`);
       console.log(`http://localhost:${port}`);
     });
+
+    await initializeScheduledCleanups();
   } catch (error) {
     console.error("Failed to initialize database pools:", error);
     process.exit(1);

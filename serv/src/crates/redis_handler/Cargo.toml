@@ -12,3 +12,4 @@ tokio = { workspace = true }
 napi = { workspace = true }
 napi-derive = { workspace = true }
 chrono = { workspace = true }
+thiserror = { workspace = true }

@@ -11,11 +11,11 @@ importers:
         specifier: ^5.90.20
         version: 5.90.20(react@19.2.4)
       "@trpc/client":
-        specifier: ^11.8.1
-        version: 11.8.1(@trpc/server@11.8.1(typescript@5.9.3))(typescript@5.9.3)
+        specifier: ^11.9.0
+        version: 11.9.0(@trpc/server@11.9.0(typescript@5.9.3))(typescript@5.9.3)
       "@trpc/react-query":
-        specifier: ^11.8.1
-        version: 11.8.1(@tanstack/react-query@5.90.20(react@19.2.4))(@trpc/client@11.8.1(@trpc/server@11.8.1(typescript@5.9.3))(typescript@5.9.3))(@trpc/server@11.8.1(typescript@5.9.3))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
+        specifier: ^11.9.0
+        version: 11.9.0(@tanstack/react-query@5.90.20(react@19.2.4))(@trpc/client@11.9.0(@trpc/server@11.9.0(typescript@5.9.3))(typescript@5.9.3))(@trpc/server@11.9.0(typescript@5.9.3))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
       axios:
         specifier: ^1.13.4
         version: 1.13.4
@@ -39,8 +39,8 @@ importers:
         specifier: ^5.91.2
         version: 5.91.2(@tanstack/react-query@5.90.20(react@19.2.4))(react@19.2.4)
       "@trpc/server":
-        specifier: ^11.8.1
-        version: 11.8.1(typescript@5.9.3)
+        specifier: ^11.9.0
+        version: 11.9.0(typescript@5.9.3)
       "@types/node":
         specifier: ^24.10.9
         version: 24.10.9
@@ -832,32 +832,32 @@ packages:
     peerDependencies:
       react: ^18 || ^19
 
-  "@trpc/client@11.8.1":
+  "@trpc/client@11.9.0":
     resolution:
       {
-        integrity: sha512-L/SJFGanr9xGABmuDoeXR4xAdHJmsXsiF9OuH+apecJ+8sUITzVT1EPeqp0ebqA6lBhEl5pPfg3rngVhi/h60Q==,
+        integrity: sha512-3r4RT/GbR263QO+2gCPyrs5fEYaXua3/AzCs+GbWC09X0F+mVkyBpO3GRSDObiNU/N1YB597U7WGW3WA1d1TVw==,
       }
     peerDependencies:
-      "@trpc/server": 11.8.1
+      "@trpc/server": 11.9.0
       typescript: ">=5.7.2"
 
-  "@trpc/react-query@11.8.1":
+  "@trpc/react-query@11.9.0":
     resolution:
       {
-        integrity: sha512-0Vu55ld/oINb4U6nIPPi7eZMhxUop6K+4QUK90RVsfSD5r+957sM80M4c8bjh/JBZUxMFv9JOhxxlWcrgHxHow==,
+        integrity: sha512-9Gpj06ZcfsA77PB5A8VC2MFS/E7pPvoNqaSlSrAgLyRsKqy0gldFOW2RMKura69M6fwtgjg9+4i2+rOHKT7qLw==,
       }
     peerDependencies:
       "@tanstack/react-query": ^5.80.3
-      "@trpc/client": 11.8.1
-      "@trpc/server": 11.8.1
+      "@trpc/client": 11.9.0
+      "@trpc/server": 11.9.0
       react: ">=18.2.0"
       react-dom: ">=18.2.0"
       typescript: ">=5.7.2"
 
-  "@trpc/server@11.8.1":
+  "@trpc/server@11.9.0":
     resolution:
       {
-        integrity: sha512-P4rzZRpEL7zDFgjxK65IdyH0e41FMFfTkQkuq0BA5tKcr7E6v9/v38DEklCpoDN6sPiB1Sigy/PUEzHENhswDA==,
+        integrity: sha512-T8gC4NOCzx8tCsQEQ5sSjf24bN+9AEqXZRfpThG+YCEmcEwXfS7RP8VVrl5Vodt1S+zGEDyQSof4YVAj1zq/mg==,
       }
     peerDependencies:
       typescript: ">=5.7.2"
@@ -1075,10 +1075,10 @@ packages:
         integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==,
       }
 
-  baseline-browser-mapping@2.9.18:
+  baseline-browser-mapping@2.9.19:
     resolution:
       {
-        integrity: sha512-e23vBV1ZLfjb9apvfPk4rHVu2ry6RIr2Wfs+O324okSidrX7pTAnEJPCh/O5BtRlr7QtZI7ktOP3vsqr7Z5XoA==,
+        integrity: sha512-ipDqC8FrAl/76p2SSWKSI+H9tFwm7vYqXQrItCuiVPt26Km0jS+NzSsBWAaBusvSbQcfJG+JitdMm+wZAgTYqg==,
       }
     hasBin: true
 
@@ -2502,21 +2502,21 @@ snapshots:
       "@tanstack/query-core": 5.90.20
       react: 19.2.4
 
-  "@trpc/client@11.8.1(@trpc/server@11.8.1(typescript@5.9.3))(typescript@5.9.3)":
+  "@trpc/client@11.9.0(@trpc/server@11.9.0(typescript@5.9.3))(typescript@5.9.3)":
     dependencies:
-      "@trpc/server": 11.8.1(typescript@5.9.3)
+      "@trpc/server": 11.9.0(typescript@5.9.3)
       typescript: 5.9.3
 
-  "@trpc/react-query@11.8.1(@tanstack/react-query@5.90.20(react@19.2.4))(@trpc/client@11.8.1(@trpc/server@11.8.1(typescript@5.9.3))(typescript@5.9.3))(@trpc/server@11.8.1(typescript@5.9.3))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)":
+  "@trpc/react-query@11.9.0(@tanstack/react-query@5.90.20(react@19.2.4))(@trpc/client@11.9.0(@trpc/server@11.9.0(typescript@5.9.3))(typescript@5.9.3))(@trpc/server@11.9.0(typescript@5.9.3))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)":
     dependencies:
       "@tanstack/react-query": 5.90.20(react@19.2.4)
-      "@trpc/client": 11.8.1(@trpc/server@11.8.1(typescript@5.9.3))(typescript@5.9.3)
-      "@trpc/server": 11.8.1(typescript@5.9.3)
+      "@trpc/client": 11.9.0(@trpc/server@11.9.0(typescript@5.9.3))(typescript@5.9.3)
+      "@trpc/server": 11.9.0(typescript@5.9.3)
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
       typescript: 5.9.3
 
-  "@trpc/server@11.8.1(typescript@5.9.3)":
+  "@trpc/server@11.9.0(typescript@5.9.3)":
     dependencies:
       typescript: 5.9.3
 
@@ -2695,7 +2695,7 @@ snapshots:
 
   balanced-match@1.0.2: {}
 
-  baseline-browser-mapping@2.9.18: {}
+  baseline-browser-mapping@2.9.19: {}
 
   brace-expansion@1.1.12:
     dependencies:
@@ -2708,7 +2708,7 @@ snapshots:
 
   browserslist@4.28.1:
     dependencies:
-      baseline-browser-mapping: 2.9.18
+      baseline-browser-mapping: 2.9.19
       caniuse-lite: 1.0.30001766
       electron-to-chromium: 1.5.279
       node-releases: 2.0.27

@@ -12,9 +12,13 @@ export declare function checkAccessJwt(token: string): Promise<string>
 
 export declare function checkPass(email: string, pass: string): Promise<boolean>
 
+export declare function checkRateLimit(identifier: string, maxRequests: number, windowSeconds: number): Promise<[boolean, number, number]>
+
 export declare function checkRefreshJwt(token: string): Promise<string>
 
 export declare function cleanupExpiredTokens(): Promise<number>
+
+export declare function cleanupRateLimitKeys(): Promise<number>
 
 export declare function createUser(email: string, pass?: string | undefined | null, oauthProvider?: string | undefined | null): Promise<User>
 
@@ -24,15 +28,27 @@ export declare function deleteUser(email: string): Promise<User>
 
 export declare function deleteUserRefreshTokens(userId: string): Promise<number>
 
+export declare function flushRedis(): Promise<boolean>
+
 export declare function genAccessJwt(uid: string, email: string): Promise<string>
 
 export declare function genRefreshJwt(uid: string, email: string): Promise<[string, string]>
+
+export declare function getAllRefreshTokens(): Promise<Array<RefreshTokenData>>
+
+export declare function getRateLimitStats(identifier: string): Promise<[number, number]>
+
+export declare function getRedisInfo(): Promise<string>
 
 export declare function getRefreshToken(jti: string): Promise<RefreshTokenData | null>
 
 export declare function initDbs(): Promise<void>
 
 export declare function initRedis(): Promise<void>
+
+export declare function redisHealthCheck(): Promise<boolean>
+
+export declare function resetRateLimit(identifier: string): Promise<boolean>
 
 export declare function rotateRefreshJwt(token: string): Promise<[string, string, string]>
 
@@ -41,6 +57,12 @@ export declare function searchUsers(emailStr: string): Promise<Array<User>>
 export declare function storeRefreshToken(jti: string, userId: string, email: string, expiresInSeconds: number): Promise<boolean>
 
 export declare function validateRefreshToken(jti: string): Promise<boolean>
+export interface RateLimitConfig {
+  maxRequests: number
+  windowSeconds: number
+  identifier: string
+}
+
 export interface RefreshTokenData {
   userId: string
   email: string
