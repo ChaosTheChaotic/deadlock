@@ -58,3 +58,24 @@ function check_running_postgres() {
   fi
 }
 
+function check_running_redis() {
+  local redis_host=${REDIS_HOST:-localhost}
+  local redis_port=${REDIS_PORT:-6379}
+  
+  if command -v redis-cli &> /dev/null; then
+    if redis-cli -h "$redis_host" -p "$redis_port" ping &> /dev/null; then
+      echo "0"
+      return
+    fi
+  fi
+  
+  if command -v docker &> /dev/null; then
+    if docker ps --format '{{.Names}} {{.Image}}' 2>/dev/null | \
+       grep -E '(redis|redis-server|redis:)' &> /dev/null; then
+      echo "0"
+      return
+    fi
+  fi
+  
+  echo "1"
+}

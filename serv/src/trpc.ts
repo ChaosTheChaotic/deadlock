@@ -15,6 +15,7 @@ export interface Ctx {
   req: Request;
   res: Response;
   user?: { uid: string; email: string };
+  ip?: string;
 }
 
 export const t = initTRPC.context<Ctx>().create({
@@ -82,21 +83,75 @@ const authMiddleware = t.middleware(async ({ ctx, next, path }) => {
   }
 });
 
-// TODO: Implement rate limiting using redis
-// The following line would .use(rateLimitMiddleware)
+const createRateLimitMiddleware = (config: {
+  maxRequests: number;
+  windowSeconds: number;
+  getIdentifier: (ctx: Ctx) => string;
+}): ReturnType<typeof t.middleware> => {
+  return t.middleware(async ({ ctx, next }) => {
+    const identifier = config.getIdentifier(ctx);
+
+    const [allowed, remainingSeconds, remainingRequests] =
+      await Rapi.checkRateLimit(
+        identifier,
+        config.maxRequests,
+        config.windowSeconds,
+      );
+
+    // Set rate limit headers for client information
+    ctx.res.setHeader("X-RateLimit-Limit", config.maxRequests);
+    ctx.res.setHeader("X-RateLimit-Remaining", remainingRequests);
+    ctx.res.setHeader("X-RateLimit-Reset", remainingSeconds);
+
+    if (!allowed) {
+      throw new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message: `Rate limit exceeded. Try again in ${remainingSeconds} seconds.`,
+        cause: "RATE_LIMIT_EXCEEDED",
+      });
+    }
+
+    return next({ ctx });
+  });
+};
+
+// Create specific rate limit configurations
+export const rateLimitMiddleware = {
+  // For authenticated users: 100 requests per 15 minutes
+  authenticated: createRateLimitMiddleware({
+    maxRequests: 100,
+    windowSeconds: 15 * 60, // 15 minutes
+    getIdentifier: (ctx) => ctx.user?.uid ?? ctx.req.ip ?? "unknown",
+  }),
+
+  // For unauthenticated users: 10 requests per 15 minutes
+  unauthenticated: createRateLimitMiddleware({
+    maxRequests: 10,
+    windowSeconds: 15 * 60,
+    getIdentifier: (ctx) => ctx.req.ip ?? "unknown",
+  }),
+
+  // For login/register: 5 attempts per 5 minutes
+  authEndpoint: createRateLimitMiddleware({
+    maxRequests: 5,
+    windowSeconds: 5 * 60, // 5 minutes
+    getIdentifier: (ctx) => ctx.req.ip ?? "unknown",
+  }),
+
+  // Custom configurable rate limit
+  custom: (config: {
+    maxRequests: number;
+    windowSeconds: number;
+    getIdentifier: (ctx: Ctx) => string;
+  }) => createRateLimitMiddleware(config),
+};
+
 export const protectedProcedure: typeof t.procedure =
   t.procedure.use(authMiddleware);
 
-// TODO: Convert this to redis
-const refreshTokenStore = new Map<
-  string,
-  {
-    userId: string;
-    email: string;
-    jti: string;
-    expiresAt: Date;
-  }
->();
+export const rateLimitedProcedure: typeof t.procedure = protectedProcedure.use(
+  rateLimitMiddleware.authenticated,
+);
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -140,6 +195,7 @@ export const appRouter = t.router({
       return await Rapi.deleteUser(input.email);
     }),
   login: t.procedure
+    .use(rateLimitMiddleware.authEndpoint)
     .input(z.object({ email: emailSchema, pass: passSchema }))
     .mutation(async ({ input, ctx }) => {
       const isValid = await Rapi.checkPass(input.email, input.pass);
@@ -159,15 +215,12 @@ export const appRouter = t.router({
       const accessToken = await Rapi.genAccessJwt(usr.uid, usr.email);
       const [refreshToken, jti] = await Rapi.genRefreshJwt(usr.uid, usr.email);
 
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 30);
-
-      refreshTokenStore.set(jti, {
-        userId: usr.uid,
-        email: usr.email,
+      await Rapi.storeRefreshToken(
         jti,
-        expiresAt,
-      });
+        usr.uid,
+        usr.email,
+        REFRESH_TOKEN_MAX_AGE,
+      );
 
       ctx.res.cookie("__Host-accessToken", accessToken, COOKIE_OPTS);
       ctx.res.cookie("__Host-refreshToken", refreshToken, {
@@ -179,6 +232,7 @@ export const appRouter = t.router({
     }),
 
   register: t.procedure
+    .use(rateLimitMiddleware.authEndpoint)
     .input(
       z.object({
         email: emailSchema,
@@ -208,15 +262,12 @@ export const appRouter = t.router({
         user.email,
       );
 
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 30);
-
-      refreshTokenStore.set(jti, {
-        userId: user.uid,
-        email: user.email,
+      await Rapi.storeRefreshToken(
         jti,
-        expiresAt,
-      });
+        user.uid,
+        user.email,
+        REFRESH_TOKEN_MAX_AGE,
+      );
 
       // Set HTTP-only cookies
       if (ctx.res) {
@@ -236,85 +287,91 @@ export const appRouter = t.router({
       };
     }),
 
-  refresh: t.procedure.mutation(async ({ ctx }) => {
-    const refreshToken = ctx.refreshToken;
-    if (!refreshToken) {
-      throw new TRPCError({
-        code: "UNAUTHORIZED",
-        message: "No refresh token provided",
-      });
-    }
-
-    try {
-      const claimsJson = await Rapi.checkRefreshJwt(refreshToken);
-      const claims = JSON.parse(claimsJson) as {
-        jti: string;
-        uid: string;
-        email: string;
-      };
-
-      const storedToken = refreshTokenStore.get(claims.jti);
-      if (storedToken?.userId !== claims.uid) {
+  refresh: t.procedure
+    .use(rateLimitMiddleware.unauthenticated)
+    .mutation(async ({ ctx }) => {
+      const refreshToken = ctx.refreshToken;
+      if (!refreshToken) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message: "Invalid refresh token",
+          message: "No refresh token provided",
         });
       }
 
-      if (storedToken.expiresAt < new Date()) {
-        refreshTokenStore.delete(claims.jti);
+      try {
+        const claimsJson = await Rapi.checkRefreshJwt(refreshToken);
+        const claims = JSON.parse(claimsJson) as {
+          jti: string;
+          uid: string;
+          email: string;
+        };
+
+        const isValid = await Rapi.validateRefreshToken(claims.jti);
+        if (!isValid) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "Invalid or expired refresh token",
+          });
+        }
+
+        // Get the stored token data to ensure it matches
+        const storedToken = await Rapi.getRefreshToken(claims.jti);
+        if (storedToken?.userId !== claims.uid) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "Invalid refresh token",
+          });
+        }
+
+        const newAccessToken = await Rapi.genAccessJwt(
+          claims.uid,
+          claims.email,
+        );
+        const [newRefreshToken, newJti] = await Rapi.genRefreshJwt(
+          claims.uid,
+          claims.email,
+        );
+
+        await Rapi.storeRefreshToken(
+          newJti,
+          claims.uid,
+          claims.email,
+          REFRESH_TOKEN_MAX_AGE,
+        );
+
+        await Rapi.deleteRefreshToken(claims.jti);
+
+        ctx.res.cookie("__Host-accessToken", newAccessToken, COOKIE_OPTS);
+        ctx.res.cookie("__Host-refreshToken", newRefreshToken, {
+          ...COOKIE_OPTS,
+          maxAge: REFRESH_TOKEN_MAX_AGE,
+        });
+
+        return { user: { uid: claims.uid, email: claims.email } };
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message: "Refresh token expired",
+          message: "Failed to refresh token",
         });
       }
-
-      const newAccessToken = await Rapi.genAccessJwt(claims.uid, claims.email);
-      const [newRefreshToken, newJti] = await Rapi.genRefreshJwt(
-        claims.uid,
-        claims.email,
-      );
-
-      refreshTokenStore.delete(claims.jti);
-      const newExpiresAt = new Date();
-      newExpiresAt.setDate(newExpiresAt.getDate() + 30);
-      refreshTokenStore.set(newJti, {
-        userId: claims.uid,
-        email: claims.email,
-        jti: newJti,
-        expiresAt: newExpiresAt,
-      });
-
-      ctx.res.cookie("__Host-accessToken", newAccessToken, COOKIE_OPTS);
-      ctx.res.cookie("__Host-refreshToken", newRefreshToken, {
-        ...COOKIE_OPTS,
-        maxAge: REFRESH_TOKEN_MAX_AGE,
-      });
-
-      return { user: { uid: claims.uid, email: claims.email } };
-    } catch (error) {
-      if (error instanceof TRPCError) throw error;
-      throw new TRPCError({
-        code: "UNAUTHORIZED",
-        message: "Failed to refresh token",
-      });
-    }
-  }),
+    }),
 
   logout: t.procedure
     .input(z.object({ jti: z.string().optional() }).optional())
     .mutation(async ({ ctx, input }) => {
       const refreshToken = ctx.refreshToken;
+
       if (refreshToken) {
         try {
           const claimsJson = await Rapi.checkRefreshJwt(refreshToken);
           const claims = JSON.parse(claimsJson) as { jti: string };
-          refreshTokenStore.delete(claims.jti);
+          await Rapi.deleteRefreshToken(claims.jti);
         } catch {
           /* ignore */
         }
       } else if (input?.jti) {
-        refreshTokenStore.delete(input.jti);
+        await Rapi.deleteRefreshToken(input.jti);
       }
 
       ctx.res.clearCookie("__Host-accessToken", COOKIE_OPTS);
@@ -323,9 +380,39 @@ export const appRouter = t.router({
       return { success: true };
     }),
 
-  me: protectedProcedure.query(({ ctx }) => {
+  me: rateLimitedProcedure.query(({ ctx }) => {
     return {
       user: ctx.user,
+    };
+  }),
+  rateLimitStats: protectedProcedure
+    .input(z.object({ identifier: z.string().optional() }))
+    .query(async ({ ctx, input }) => {
+      const identifier =
+        input.identifier ?? ctx.user?.uid ?? ctx.req.ip ?? "unknown";
+      return await Rapi.getRateLimitStats(identifier);
+    }),
+
+  resetRateLimit: protectedProcedure
+    .input(z.object({ identifier: z.string() }))
+    .mutation(async ({ input }) => {
+      // TODO: Add admin check
+      return await Rapi.resetRateLimit(input.identifier);
+    }),
+  cleanupRateLimits: protectedProcedure.mutation(async () => {
+    const cleaned = await Rapi.cleanupRateLimitKeys();
+    return { cleaned, success: true };
+  }),
+
+  // TODO: Add admin check
+  runCleanup: protectedProcedure.mutation(async () => {
+    const rateLimitCleaned = await Rapi.cleanupRateLimitKeys();
+    const tokenCleaned = await Rapi.cleanupExpiredTokens();
+    return {
+      rateLimitCleaned,
+      tokenCleaned,
+      totalCleaned: rateLimitCleaned + tokenCleaned,
+      success: true,
     };
   }),
 });

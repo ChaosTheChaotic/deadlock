@@ -32,6 +32,18 @@ else
   echo "Invalid state"
 fi
 
+rds=$(check_running_redis)
+
+if [ "$rds" == "0" ]; then
+  echo "A running redis was found!"
+elif [ "$rds" == "1" ]; then
+  echo "No running redis was found, the program WILL error in console."
+  echo "If you are using docker ensure docker-compose up -d was run and a docker session is running"
+  echo "If you are using raw redis ensure it is running"
+else
+  echo "Invalid state"
+fi
+
 # Build everything and run
 cd $PR/web
 pnpm build && echo "Sucessfully built the web" || fatal "Failed to build web"
