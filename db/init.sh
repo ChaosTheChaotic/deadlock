@@ -45,12 +45,18 @@ CREATE TABLE IF NOT EXISTS public.Users (
   Email CITEXT UNIQUE NOT NULL,
   Password_Hash TEXT NULL,
   OAuth_Provider VARCHAR(50) NULL,
+  OAuth_Provider_ID VARCHAR(255) NULL, -- Unique ID from OAuth provider
   Creation_Time TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  Last_Login_Time TIMESTAMP WITH TIME ZONE NULL,
   CONSTRAINT first_email_check CHECK (
-    -- Basic email validation where "@" must not be surrounded with whitespace and there must be a dot in the domain part
     Email ~* '^[^[:space:]]+@[^[:space:]]+\.[^[:space:]]+$'
-  )
+  ),
+  CONSTRAINT oauth_unique_per_provider UNIQUE (OAuth_Provider, OAuth_Provider_ID)
 );
+
+-- Create index for faster OAuth lookups
+CREATE INDEX IF NOT EXISTS idx_users_oauth ON public.Users(OAuth_Provider, OAuth_Provider_ID);
+CREATE INDEX IF NOT EXISTS idx_users_email ON public.Users(Email);
 EOF
 
 # Configure GRIDS
