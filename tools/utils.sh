@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+if [ -n "${__UTILS_SH_SOURCED:-}" ]; then
+  return 0
+fi
+__UTILS_SH_SOURCED=1
+
 function fatal() {
   local msg=$1
 
@@ -13,12 +18,21 @@ function warn() {
   printf "[WARN]: %s" "$msg"
 }
 
-function check_installed() {
+function check_installed_internal() {
   local cmd=$1
+  local not=$2
 
   if ! command -v "$cmd" >/dev/null 2>&1; then
-    fatal "$cmd not installed, please install it"
+    "$not"
   fi
+}
+
+function check_installed() {
+  check_installed_internal "$1" "fatal \"$cmd not installed, please install it\""
+}
+
+function check_installed_warn() {
+  check_installed_internal "$1" "warn \"$cmd not installed, some functions might not work correctly without it: $2\""
 }
 
 function check_installed_prompt() {

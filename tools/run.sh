@@ -3,11 +3,27 @@
 ABP=$(dirname $(realpath "$0"))
 PR="$(dirname -- "$ABP")"
 
+regen=false
+
+parse_opts() {
+  local OPTIND OPTARG opt
+
+  while getopts "r" opt; do
+    case "$opt" in
+      r)
+	regen=true
+	;;
+    esac
+  done
+}
+
 # Include utility functions
 source $ABP/utils.sh
 
 # Check setup
 check_common_deps
+
+parse_opts "$@"
 
 if [ ! -d "$PR/web/node_modules" ] || [ ! -d "$PR/serv/node_modules" ] || [ ! -d "$PR/serv/src/crates/napi_exports/node_modules" ]; then
     read -p "Setup is not complete, would you like to setup through the script? (Y/n): " yn
@@ -42,6 +58,13 @@ elif [ "$rds" == "1" ]; then
   echo "If you are using raw redis ensure it is running"
 else
   echo "Invalid state"
+fi
+
+if "$regen"; then
+  echo "Trying to generate secure prod keys"
+  source $ABP/gen.sh
+else
+  echo "Not generating secure prod keys."
 fi
 
 # Build everything and run
