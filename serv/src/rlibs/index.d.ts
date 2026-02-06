@@ -20,7 +20,7 @@ export declare function cleanupExpiredTokens(): Promise<number>
 
 export declare function cleanupRateLimitKeys(): Promise<number>
 
-export declare function createUser(email: string, pass?: string | undefined | null, oauthProvider?: string | undefined | null): Promise<User>
+export declare function createUser(email: string, pass?: string | undefined | null, oauthProvider?: string | undefined | null, oauthProviderId?: string | undefined | null): Promise<User>
 
 export declare function deleteRefreshToken(jti: string): Promise<boolean>
 
@@ -55,6 +55,8 @@ export declare function rotateRefreshJwt(token: string): Promise<[string, string
 export declare function searchUsers(emailStr: string): Promise<Array<User>>
 
 export declare function storeRefreshToken(jti: string, userId: string, email: string, expiresInSeconds: number): Promise<boolean>
+
+export declare function updateUser(email: string, pass?: string | undefined | null, oauthProvider?: string | undefined | null, oauthProviderId?: string | undefined | null): Promise<User>
 
 export declare function validateRefreshToken(jti: string): Promise<boolean>
 export interface RateLimitConfig {
