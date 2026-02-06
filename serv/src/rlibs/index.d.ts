@@ -75,5 +75,6 @@ export interface User {
   email: string
   pwdHash?: string
   oauthProvider?: string
+  oauthProviderId?: string
   createTime: number
 }

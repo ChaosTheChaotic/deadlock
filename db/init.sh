@@ -47,7 +47,6 @@ CREATE TABLE IF NOT EXISTS public.Users (
   OAuth_Provider VARCHAR(50) NULL,
   OAuth_Provider_ID VARCHAR(255) NULL, -- Unique ID from OAuth provider
   Creation_Time TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  Last_Login_Time TIMESTAMP WITH TIME ZONE NULL,
   CONSTRAINT first_email_check CHECK (
     Email ~* '^[^[:space:]]+@[^[:space:]]+\.[^[:space:]]+$'
   ),

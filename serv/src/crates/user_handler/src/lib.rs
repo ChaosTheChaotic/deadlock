@@ -11,9 +11,8 @@ pub fn user_from_row(row: Row) -> User {
         email: row.get("email"),
         pwd_hash: row.get("password_hash"),
         oauth_provider: row.get("oauth_provider"),
-        create_time: row.get::<_, f64>("creation_time"),
-        last_login_time: row.get("last_login_time"),
         oauth_provider_id: row.get("oauth_provider_id"),
+        create_time: row.get::<_, f64>("creation_time"),
     }
 }
 
@@ -31,7 +30,8 @@ pub async fn search_users(email_str: String) -> napi::Result<Vec<User>> {
                 email, 
                 password_hash, 
                 oauth_provider, 
-                date_part('epoch', creation_time) as creation_time
+                oauth_provider_id,
+                date_part('epoch', creation_time) as creation_time,
              FROM users 
              WHERE email ILIKE $1",
         )
@@ -82,6 +82,7 @@ pub async fn add_user(
                     email, 
                     password_hash, 
                     oauth_provider, 
+                    oauth_provider_id,
                     date_part('epoch', creation_time) as creation_time",
             )
             .await
@@ -106,6 +107,7 @@ pub async fn add_user(
                     email, 
                     password_hash, 
                     oauth_provider, 
+                    oauth_provider_id,
                     date_part('epoch', creation_time) as creation_time",
             )
             .await
@@ -185,6 +187,7 @@ pub async fn delete_user(email: String) -> napi::Result<User> {
                 email, 
                 password_hash, 
                 oauth_provider, 
+                oauth_provider_id,
                 date_part('epoch', creation_time) as creation_time",
         )
         .await
