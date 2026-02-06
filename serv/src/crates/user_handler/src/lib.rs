@@ -12,6 +12,8 @@ pub fn user_from_row(row: Row) -> User {
         pwd_hash: row.get("password_hash"),
         oauth_provider: row.get("oauth_provider"),
         create_time: row.get::<_, f64>("creation_time"),
+        last_login_time: row.get("last_login_time"),
+        oauth_provider_id: row.get("oauth_provider_id"),
     }
 }
 
