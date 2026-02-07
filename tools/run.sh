@@ -67,6 +67,16 @@ else
   echo "Not generating secure prod keys."
 fi
 
+if grep -q "replace_me" "$PR/.env.prod"; then
+  source $PR/.env.prod
+else
+  echo "OAuth will NOT work, oauth creds are invalid"
+  echo "Create:"
+  echo "GOOGLE_CLIENT_ID=your_google_client_id_here_replace_me"
+  echo "GOOGLE_CLIENT_SECRET=your_google_client_secret_here_replace_me"
+  echo "Inside a file named .env.prod in the project root to allow oauth to work"
+fi
+
 # Build everything and run
 cd $PR/web
 pnpm build && echo "Sucessfully built the web" || fatal "Failed to build web"
