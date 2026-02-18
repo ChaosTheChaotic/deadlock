@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     void initAuth();
-  }, [meQuery]);
+  }, [meQuery.refetch]);
 
   const login = useCallback(
     async (email: string, password: string) => {

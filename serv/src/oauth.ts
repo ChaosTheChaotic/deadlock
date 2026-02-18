@@ -74,7 +74,7 @@ const REFRESH_TOKEN_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
 
 const COOKIE_OPTS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
+  secure: true,
   signed: true,
   sameSite: "lax" as const,
   path: "/",

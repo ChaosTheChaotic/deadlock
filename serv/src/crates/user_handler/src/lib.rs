@@ -31,7 +31,7 @@ pub async fn search_users(email_str: String) -> napi::Result<Vec<User>> {
                 password_hash, 
                 oauth_provider, 
                 oauth_provider_id,
-                date_part('epoch', creation_time) as creation_time,
+                date_part('epoch', creation_time) as creation_time
              FROM users 
              WHERE email ILIKE $1",
         )

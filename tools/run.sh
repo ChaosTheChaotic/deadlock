@@ -67,8 +67,10 @@ else
   echo "Not generating secure prod keys."
 fi
 
-if grep -q "replace_me" "$PR/.env.prod"; then
+if ! grep -q "replace_me" "$PR/.env.prod"; then
+  set -a
   source $PR/.env.prod
+  set +a
 else
   echo "OAuth will NOT work, oauth creds are invalid"
   echo "Create:"
