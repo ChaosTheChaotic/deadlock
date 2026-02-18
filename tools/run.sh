@@ -11,8 +11,8 @@ parse_opts() {
   while getopts "r" opt; do
     case "$opt" in
       r)
-	regen=true
-	;;
+        regen=true
+        ;;
     esac
   done
 }
@@ -26,13 +26,13 @@ check_common_deps
 parse_opts "$@"
 
 if [ ! -d "$PR/web/node_modules" ] || [ ! -d "$PR/serv/node_modules" ] || [ ! -d "$PR/serv/src/crates/napi_exports/node_modules" ]; then
-    read -p "Setup is not complete, would you like to setup through the script? (Y/n): " yn
-    yn=${yn:-y}
-    case "$yn" in
-      [Yy]* ) "$ABP/setup.sh" || fatal "Setup failed";;
-      [Nn]* ) fatal "Not running setup script, aborting";;
-      * ) fatal "Invalid case hit";;
-    esac
+  read -p "Setup is not complete, would you like to setup through the script? (Y/n): " yn
+  yn=${yn:-y}
+  case "$yn" in
+    [Yy]*) "$ABP/setup.sh" || fatal "Setup failed" ;;
+    [Nn]*) fatal "Not running setup script, aborting" ;;
+    *) fatal "Invalid case hit" ;;
+  esac
 fi
 
 # Check for running postgres
@@ -85,6 +85,7 @@ else
   echo "GOOGLE_CLIENT_ID=your_google_client_id_here_replace_me"
   echo "GOOGLE_CLIENT_SECRET=your_google_client_secret_here_replace_me"
   echo "Inside a file named .env.prod in the project root to allow oauth to work"
+  echo "The authorized redirect URIs should be set to \"{projects domain}/auth/google/callback\" for this to work"
 fi
 
 # Build everything and run
