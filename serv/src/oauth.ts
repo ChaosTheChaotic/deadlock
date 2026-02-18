@@ -21,8 +21,7 @@ const ALLOWED_ORIGINS = (
 const ALLOWED_REDIRECT_PATHS = (
   process.env.ALLOWED_REDIRECT_PATHS ?? "/"
 ).split(",");
-const DEFAULT_URL =
-  process.env.DEFAULT_URL ?? "http://localhost:8888";
+const DEFAULT_URL = process.env.DEFAULT_URL ?? "http://localhost:8888";
 
 const getHeader = (val: string | string[] | undefined): string | undefined =>
   Array.isArray(val) ? val[0] : val;
