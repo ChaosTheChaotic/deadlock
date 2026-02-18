@@ -85,6 +85,7 @@ else
   echo "GOOGLE_CLIENT_ID=your_google_client_id_here_replace_me"
   echo "GOOGLE_CLIENT_SECRET=your_google_client_secret_here_replace_me"
   echo "Inside a file named .env.prod in the project root to allow oauth to work"
+  echo "The authorized redirect URIs should be set to {projects domain}/auth/google/callback"
 fi
 
 # Build everything and run
