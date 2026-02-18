@@ -73,7 +73,10 @@ pub async fn add_user(
             .await
             .map_err(|e| napi::Error::from_reason(format!("Failed to prepare cached: {e}")))?;
 
-        if let Ok(Some(row)) = client.query_opt(&check_oauth_stmt, &[provider, provider_id]).await {
+        if let Ok(Some(row)) = client
+            .query_opt(&check_oauth_stmt, &[provider, provider_id])
+            .await
+        {
             return Ok(user_from_row(row));
         }
     }
@@ -92,12 +95,19 @@ pub async fn add_user(
     if let Ok(Some(row)) = client.query_opt(&check_email_stmt, &[&email]).await {
         let existing_oauth_provider: Option<String> = row.get("oauth_provider");
         let existing_oauth_provider_id: Option<String> = row.get("oauth_provider_id");
-        
+
         // If user exists without OAuth, link the OAuth account
-        if existing_oauth_provider.is_none() && existing_oauth_provider_id.is_none() {
-            if let (Some(provider), Some(provider_id)) = (&oauth_provider, &oauth_provider_id) {
-                return update_user(email, None, Some(provider.clone()), Some(provider_id.clone())).await;
-            }
+        if existing_oauth_provider.is_none()
+            && existing_oauth_provider_id.is_none()
+            && let (Some(provider), Some(provider_id)) = (&oauth_provider, &oauth_provider_id)
+        {
+            return update_user(
+                email,
+                None,
+                Some(provider.clone()),
+                Some(provider_id.clone()),
+            )
+            .await;
         }
         return Ok(user_from_row(row));
     }
@@ -246,7 +256,7 @@ pub async fn update_user(
     let mut updates = Vec::new();
     let mut params: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = Vec::new();
     let mut param_counter = 1;
-    let password_hash_owned: String; 
+    let password_hash_owned: String;
 
     if let Some(password) = &pass {
         let salt = SaltString::generate(&mut rand_core::OsRng);
@@ -254,7 +264,7 @@ pub async fn update_user(
             .hash_password(password.as_bytes(), &salt)
             .map_err(|e| napi::Error::from_reason(format!("Hashing failed: {e}")))?
             .to_string();
-        
+
         updates.push(format!("password_hash = ${}", param_counter));
         params.push(&password_hash_owned);
         param_counter += 1;
@@ -293,10 +303,9 @@ pub async fn update_user(
         param_counter
     );
 
-    let stmt = client
-        .prepare_cached(&query)
-        .await
-        .map_err(|e| napi::Error::from_reason(format!("Failed to prepare update statement: {e}")))?;
+    let stmt = client.prepare_cached(&query).await.map_err(|e| {
+        napi::Error::from_reason(format!("Failed to prepare update statement: {e}"))
+    })?;
 
     let row = client
         .query_one(&stmt, &params)

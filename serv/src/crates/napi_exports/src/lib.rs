@@ -8,7 +8,7 @@ use redis_handler::RefreshTokenData;
 use shared_types::User;
 use user_handler::{
     add_user, delete_user as internal_delete_users, search_users as internal_search_users,
-    validate_pass, update_user as internal_update_user,
+    update_user as internal_update_user, validate_pass,
 };
 
 #[napi]

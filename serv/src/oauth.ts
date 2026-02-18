@@ -3,25 +3,38 @@ import { OAuth2Client } from "google-auth-library";
 import { URLSearchParams } from "url";
 import * as Rapi from "./rlibs/index";
 
+interface OAuthState {
+  redirect_uri?: string;
+  frontend_origin?: string;
+  timestamp?: number;
+  nonce?: string;
+}
+
 const router: ReturnType<typeof express.Router> = express.Router();
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID ?? "";
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? "";
 
 const ALLOWED_ORIGINS = (
-  process.env.ALLOWED_ORIGINS || "http://localhost:5173"
+  process.env.ALLOWED_ORIGINS ?? "http://localhost:5173"
 ).split(",");
 const ALLOWED_REDIRECT_PATHS = (
-  process.env.ALLOWED_REDIRECT_PATHS || "/"
+  process.env.ALLOWED_REDIRECT_PATHS ?? "/"
 ).split(",");
 const DEFAULT_FRONTEND_URL =
-  process.env.DEFAULT_FRONTEND_URL || "http://localhost:5173";
+  process.env.DEFAULT_FRONTEND_URL ?? "http://localhost:5173";
 //const DEFAULT_BACKEND_URL = process.env.DEFAULT_BACKEND_URL || "http://localhost:8888";
 
+const getHeader = (val: string | string[] | undefined): string | undefined =>
+  Array.isArray(val) ? val[0] : val;
+
 const getServerUrl = (req: express.Request): string => {
-  const protocol = req.headers["x-forwarded-proto"] || req.protocol || "http";
+  const protocol =
+    getHeader(req.headers["x-forwarded-proto"]) ?? req.protocol ?? "http";
   const host =
-    req.headers["x-forwarded-host"] || req.headers.host || "localhost:8888";
+    getHeader(req.headers["x-forwarded-host"]) ??
+    req.headers.host ??
+    "localhost:8888";
   return `${protocol}://${host}`;
 };
 
@@ -53,25 +66,15 @@ const getFrontendUrl = (req: express.Request): string => {
 
 // Validate redirect path
 const validateRedirectPath = (path: string): string => {
-  // Ensure path starts with /
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  if (ALLOWED_REDIRECT_PATHS.includes(cleanPath)) return cleanPath;
 
-  // Check if path is allowed
-  if (ALLOWED_REDIRECT_PATHS.includes(cleanPath)) {
-    return cleanPath;
-  }
-
-  // Check if path matches allowed patterns (e.g., /profile/*)
   for (const allowedPath of ALLOWED_REDIRECT_PATHS) {
     if (allowedPath.includes("*")) {
       const pattern = new RegExp(`^${allowedPath.replace("*", ".*")}$`);
-      if (pattern.test(cleanPath)) {
-        return cleanPath;
-      }
+      if (pattern.test(cleanPath)) return cleanPath;
     }
   }
-
-  // Default to root
   return "/";
 };
 
@@ -97,12 +100,17 @@ router.get("/auth/google", (req, res) => {
     const frontendUrl = getFrontendUrl(req);
     const backendUrl = getServerUrl(req);
     const callbackUrl = `${backendUrl}/auth/google/callback`;
-
     const oauth2Client = createOAuth2Client(callbackUrl);
 
-    // Get and validate redirect path
-    const redirectPath = (req.query.redirect_uri as string) || "/";
+    const redirectPath = (req.query.redirect_uri as string) ?? "/";
     const validatedPath = validateRedirectPath(redirectPath);
+
+    const statePayload: OAuthState = {
+      redirect_uri: validatedPath,
+      frontend_origin: frontendUrl,
+      timestamp: Date.now(),
+      nonce: Math.random().toString(36).substring(2),
+    };
 
     const redirectUrl = oauth2Client.generateAuthUrl({
       access_type: "offline",
@@ -111,15 +119,10 @@ router.get("/auth/google", (req, res) => {
         "https://www.googleapis.com/auth/userinfo.profile",
       ],
       prompt: "select_account",
-      state: JSON.stringify({
-        redirect_uri: validatedPath,
-        frontend_origin: frontendUrl,
-        timestamp: Date.now(),
-        nonce: Math.random().toString(36).substring(2),
-      }),
+      state: JSON.stringify(statePayload),
     });
 
-    console.log(
+    console.warn(
       `OAuth initiated: frontend=${frontendUrl}, callback=${callbackUrl}`,
     );
     res.redirect(redirectUrl);
@@ -133,20 +136,18 @@ router.get("/auth/google/callback", async (req, res) => {
   try {
     const { code, state } = req.query;
 
-    if (!code || typeof code !== "string") {
+    if (!code || typeof code !== "string")
       throw new Error("No authorization code received");
-    }
 
-    // Parse state (it's JSON string)
-    let stateObj;
+    let stateObj: OAuthState;
     try {
-      stateObj = state ? JSON.parse(state as string) : {};
+      stateObj = state ? (JSON.parse(state as string) as OAuthState) : {};
     } catch {
       stateObj = {};
     }
 
-    const frontendOrigin = stateObj.frontend_origin || DEFAULT_FRONTEND_URL;
-    const redirectPath = stateObj.redirect_uri || "/";
+    const frontendOrigin = stateObj.frontend_origin ?? DEFAULT_FRONTEND_URL;
+    const redirectPath = stateObj.redirect_uri ?? "/";
 
     // Validate frontend origin
     if (!ALLOWED_ORIGINS.includes(frontendOrigin)) {
@@ -163,18 +164,16 @@ router.get("/auth/google/callback", async (req, res) => {
 
     // Get user info from Google
     const ticket = await oauth2Client.verifyIdToken({
-      idToken: tokens.id_token!,
+      idToken: tokens.id_token ?? "",
       audience: GOOGLE_CLIENT_ID,
     });
 
     const payload = ticket.getPayload();
-    if (!payload) {
-      throw new Error("Failed to get user payload");
-    }
+    if (!payload) throw new Error("Failed to get user payload");
 
-    const email = payload.email!;
+    const email = payload.email ?? "";
     const googleId = payload.sub;
-    const name = payload.name || "";
+    const name = payload.name ?? "";
 
     // Check if user exists by OAuth ID
     const existingUsers = await Rapi.searchUsers(email);
@@ -267,7 +266,7 @@ router.get("/auth/status", async (req, res) => {
 
   try {
     const claimsJson = await Rapi.checkAccessJwt(token);
-    const claims = JSON.parse(claimsJson);
+    const claims = JSON.parse(claimsJson) as Rapi.RefreshTokenClaims;
     res.json({ authenticated: true, user: claims });
   } catch {
     res.json({ authenticated: false });
