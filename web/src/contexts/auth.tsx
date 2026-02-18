@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.location.href = "/login";
     },
   });
-  const meQuery = trpc.me.useQuery(undefined, {
+  const { refetch } = trpc.me.useQuery(undefined, {
     enabled: false,
     retry: false,
   });
@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const result = await meQuery.refetch();
+        const result = await refetch();
         if (result.data?.user) {
           setUser(result.data.user);
         }
@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     void initAuth();
-  }, [meQuery.refetch]);
+  }, [refetch]);
 
   const login = useCallback(
     async (email: string, password: string) => {

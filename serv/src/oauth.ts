@@ -8,27 +8,33 @@ const router: ReturnType<typeof express.Router> = express.Router();
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
 
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "http://localhost:5173").split(",");
-const ALLOWED_REDIRECT_PATHS = (process.env.ALLOWED_REDIRECT_PATHS || "/").split(",");
-const DEFAULT_FRONTEND_URL = process.env.DEFAULT_FRONTEND_URL || "http://localhost:5173";
+const ALLOWED_ORIGINS = (
+  process.env.ALLOWED_ORIGINS || "http://localhost:5173"
+).split(",");
+const ALLOWED_REDIRECT_PATHS = (
+  process.env.ALLOWED_REDIRECT_PATHS || "/"
+).split(",");
+const DEFAULT_FRONTEND_URL =
+  process.env.DEFAULT_FRONTEND_URL || "http://localhost:5173";
 //const DEFAULT_BACKEND_URL = process.env.DEFAULT_BACKEND_URL || "http://localhost:8888";
 
 const getServerUrl = (req: express.Request): string => {
-  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-  const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:8888';
+  const protocol = req.headers["x-forwarded-proto"] || req.protocol || "http";
+  const host =
+    req.headers["x-forwarded-host"] || req.headers.host || "localhost:8888";
   return `${protocol}://${host}`;
 };
 
 // Get frontend URL from request or use default
 const getFrontendUrl = (req: express.Request): string => {
-  const origin = req.headers.origin as string;
-  const referer = req.headers.referer as string;
-  
+  const origin = req.headers.origin!;
+  const referer = req.headers.referer!;
+
   // Check if origin is allowed
   if (origin && ALLOWED_ORIGINS.includes(origin)) {
     return origin;
   }
-  
+
   // Extract origin from referer
   if (referer) {
     try {
@@ -41,7 +47,7 @@ const getFrontendUrl = (req: express.Request): string => {
       // Invalid URL, fall through
     }
   }
-  
+
   return DEFAULT_FRONTEND_URL;
 };
 
@@ -49,12 +55,12 @@ const getFrontendUrl = (req: express.Request): string => {
 const validateRedirectPath = (path: string): string => {
   // Ensure path starts with /
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
-  
+
   // Check if path is allowed
   if (ALLOWED_REDIRECT_PATHS.includes(cleanPath)) {
     return cleanPath;
   }
-  
+
   // Check if path matches allowed patterns (e.g., /profile/*)
   for (const allowedPath of ALLOWED_REDIRECT_PATHS) {
     if (allowedPath.includes("*")) {
@@ -64,7 +70,7 @@ const validateRedirectPath = (path: string): string => {
       }
     }
   }
-  
+
   // Default to root
   return "/";
 };
@@ -83,11 +89,7 @@ const COOKIE_OPTS = {
 };
 
 const createOAuth2Client = (callbackUrl: string) => {
-  return new OAuth2Client(
-    GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET,
-    callbackUrl
-  );
+  return new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, callbackUrl);
 };
 
 router.get("/auth/google", (req, res) => {
@@ -95,13 +97,13 @@ router.get("/auth/google", (req, res) => {
     const frontendUrl = getFrontendUrl(req);
     const backendUrl = getServerUrl(req);
     const callbackUrl = `${backendUrl}/auth/google/callback`;
-    
+
     const oauth2Client = createOAuth2Client(callbackUrl);
-    
+
     // Get and validate redirect path
-    const redirectPath = req.query.redirect_uri as string || "/";
+    const redirectPath = (req.query.redirect_uri as string) || "/";
     const validatedPath = validateRedirectPath(redirectPath);
-    
+
     const redirectUrl = oauth2Client.generateAuthUrl({
       access_type: "offline",
       scope: [
@@ -116,8 +118,10 @@ router.get("/auth/google", (req, res) => {
         nonce: Math.random().toString(36).substring(2),
       }),
     });
-    
-    console.log(`OAuth initiated: frontend=${frontendUrl}, callback=${callbackUrl}`);
+
+    console.log(
+      `OAuth initiated: frontend=${frontendUrl}, callback=${callbackUrl}`,
+    );
     res.redirect(redirectUrl);
   } catch (error) {
     console.error("OAuth initiation error:", error);
@@ -128,7 +132,7 @@ router.get("/auth/google", (req, res) => {
 router.get("/auth/google/callback", async (req, res) => {
   try {
     const { code, state } = req.query;
-    
+
     if (!code || typeof code !== "string") {
       throw new Error("No authorization code received");
     }
@@ -140,15 +144,15 @@ router.get("/auth/google/callback", async (req, res) => {
     } catch {
       stateObj = {};
     }
-    
+
     const frontendOrigin = stateObj.frontend_origin || DEFAULT_FRONTEND_URL;
     const redirectPath = stateObj.redirect_uri || "/";
-    
+
     // Validate frontend origin
     if (!ALLOWED_ORIGINS.includes(frontendOrigin)) {
       throw new Error(`Unauthorized frontend origin: ${frontendOrigin}`);
     }
-    
+
     const backendUrl = getServerUrl(req);
     const callbackUrl = `${backendUrl}/auth/google/callback`;
     const oauth2Client = createOAuth2Client(callbackUrl);
@@ -178,15 +182,19 @@ router.get("/auth/google/callback", async (req, res) => {
 
     if (existingUsers.length > 0) {
       const existingUser = existingUsers[0];
-      
-      if (existingUser.oauthProvider === "google" &&
-          existingUser.oauthProviderId === googleId){
+
+      if (
+        existingUser.oauthProvider === "google" &&
+        existingUser.oauthProviderId === googleId
+      ) {
         user = existingUser;
-      } else if (!existingUser.oauthProvider && !existingUser.oauthProviderId){
+      } else if (!existingUser.oauthProvider && !existingUser.oauthProviderId) {
         user = await Rapi.updateUser(email, undefined, "google", googleId);
         console.log(`Linked Google account to existing user: ${email}`);
       } else {
-        throw new Error("Account already exists with different authentication method");
+        throw new Error(
+          "Account already exists with different authentication method",
+        );
       }
     } else {
       user = await Rapi.createUser(email, undefined, "google", googleId);
@@ -200,7 +208,7 @@ router.get("/auth/google/callback", async (req, res) => {
       jti,
       user.uid,
       user.email,
-      REFRESH_TOKEN_MAX_AGE
+      REFRESH_TOKEN_MAX_AGE,
     );
 
     // Set HTTP-only cookies
@@ -216,17 +224,20 @@ router.get("/auth/google/callback", async (req, res) => {
       email: encodeURIComponent(email),
       name: encodeURIComponent(name),
     });
-    
+
     res.redirect(`${frontendOrigin}${redirectPath}?${params.toString()}`);
   } catch (error) {
     console.error("Google OAuth callback error:", error);
-    
+
     // Redirect to default frontend on error
     const params = new URLSearchParams({
       error: "oauth_failed",
-      message: error instanceof Error ? encodeURIComponent(error.message) : "Authentication failed",
+      message:
+        error instanceof Error
+          ? encodeURIComponent(error.message)
+          : "Authentication failed",
     });
-    
+
     res.redirect(`${DEFAULT_FRONTEND_URL}/login?${params.toString()}`);
   }
 });
@@ -234,7 +245,7 @@ router.get("/auth/google/callback", async (req, res) => {
 router.get("/auth/config", (req, res) => {
   const backendUrl = getServerUrl(req);
   const frontendUrl = getFrontendUrl(req);
-  
+
   res.json({
     googleClientId: GOOGLE_CLIENT_ID ? "configured" : "not_configured",
     allowedOrigins: ALLOWED_ORIGINS,
@@ -249,7 +260,7 @@ router.get("/auth/config", (req, res) => {
 router.get("/auth/status", async (req, res) => {
   const signedCookies = req.signedCookies as Record<string, string | undefined>;
   const token = signedCookies["__Host-accessToken"];
-  
+
   if (!token) {
     return res.json({ authenticated: false });
   }
@@ -265,19 +276,19 @@ router.get("/auth/status", async (req, res) => {
 
 // CORS middleware for OAuth endpoints
 router.use("/auth", (req, res, next) => {
-  const origin = req.headers.origin as string;
-  
+  const origin = req.headers.origin!;
+
   if (origin && ALLOWED_ORIGINS.includes(origin)) {
     res.header("Access-Control-Allow-Origin", origin);
     res.header("Access-Control-Allow-Credentials", "true");
     res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
     res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
   }
-  
+
   if (req.method === "OPTIONS") {
     return res.sendStatus(200);
   }
-  
+
   next();
 });
 
