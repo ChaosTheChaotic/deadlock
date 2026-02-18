@@ -16,14 +16,13 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID ?? "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? "";
 
 const ALLOWED_ORIGINS = (
-  process.env.ALLOWED_ORIGINS ?? "http://localhost:5173"
+  process.env.ALLOWED_ORIGINS ?? "http://localhost:8888"
 ).split(",");
 const ALLOWED_REDIRECT_PATHS = (
   process.env.ALLOWED_REDIRECT_PATHS ?? "/"
 ).split(",");
-const DEFAULT_FRONTEND_URL =
-  process.env.DEFAULT_FRONTEND_URL ?? "http://localhost:5173";
-//const DEFAULT_BACKEND_URL = process.env.DEFAULT_BACKEND_URL || "http://localhost:8888";
+const DEFAULT_URL =
+  process.env.DEFAULT_URL ?? "http://localhost:8888";
 
 const getHeader = (val: string | string[] | undefined): string | undefined =>
   Array.isArray(val) ? val[0] : val;
@@ -61,7 +60,7 @@ const getFrontendUrl = (req: express.Request): string => {
     }
   }
 
-  return DEFAULT_FRONTEND_URL;
+  return DEFAULT_URL;
 };
 
 // Validate redirect path
@@ -128,7 +127,7 @@ router.get("/auth/google", (req, res) => {
     res.redirect(redirectUrl);
   } catch (error) {
     console.error("OAuth initiation error:", error);
-    res.redirect(`${DEFAULT_FRONTEND_URL}/login?error=oauth_init_failed`);
+    res.redirect(`${DEFAULT_URL}/login?error=oauth_init_failed`);
   }
 });
 
@@ -146,7 +145,7 @@ router.get("/auth/google/callback", async (req, res) => {
       stateObj = {};
     }
 
-    const frontendOrigin = stateObj.frontend_origin ?? DEFAULT_FRONTEND_URL;
+    const frontendOrigin = stateObj.frontend_origin ?? DEFAULT_URL;
     const redirectPath = stateObj.redirect_uri ?? "/";
 
     // Validate frontend origin
@@ -237,7 +236,7 @@ router.get("/auth/google/callback", async (req, res) => {
           : "Authentication failed",
     });
 
-    res.redirect(`${DEFAULT_FRONTEND_URL}/login?${params.toString()}`);
+    res.redirect(`${DEFAULT_URL}/login?${params.toString()}`);
   }
 });
 

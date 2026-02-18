@@ -60,6 +60,14 @@ else
   echo "Invalid state"
 fi
 
+if [[ -f "$PR/.env" ]]; then
+  set -a
+  source $PR/.env
+  set +a
+else
+  echo "No .env file found. Many things WILL fail to work"
+fi
+
 if "$regen"; then
   echo "Trying to generate secure prod keys"
   source $ABP/gen.sh
