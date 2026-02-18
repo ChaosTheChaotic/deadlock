@@ -13,6 +13,7 @@ pub struct User {
     pub email: String,
     pub pwd_hash: Option<String>,
     pub oauth_provider: Option<String>,
+    pub oauth_provider_id: Option<String>,
     pub create_time: f64,
 }
 

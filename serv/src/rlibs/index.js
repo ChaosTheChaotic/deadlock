@@ -31,4 +31,5 @@ export const {
   getRedisInfo,
   resetRateLimit,
   cleanupRateLimitKeys,
+  updateUser,
 } = ebinding;

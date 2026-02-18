@@ -8,7 +8,7 @@ use redis_handler::RefreshTokenData;
 use shared_types::User;
 use user_handler::{
     add_user, delete_user as internal_delete_users, search_users as internal_search_users,
-    validate_pass,
+    update_user as internal_update_user, validate_pass,
 };
 
 #[napi]
@@ -21,8 +21,9 @@ pub async fn create_user(
     email: String,
     pass: Option<String>,
     oauth_provider: Option<String>,
+    oauth_provider_id: Option<String>,
 ) -> napi::Result<User> {
-    add_user(email, pass, oauth_provider)
+    add_user(email, pass, oauth_provider, oauth_provider_id)
         .await
         .map_err(|e| napi::Error::from_reason(format!("Failed to create user: {}", e)))
 }
@@ -198,4 +199,16 @@ pub async fn cleanup_rate_limit_keys() -> napi::Result<u32> {
     redis_handler::cleanup_rate_limit_keys()
         .await
         .map_err(|e| napi::Error::from_reason(format!("Failed to cleanup rate limit keys: {}", e)))
+}
+
+#[napi]
+pub async fn update_user(
+    email: String,
+    pass: Option<String>,
+    oauth_provider: Option<String>,
+    oauth_provider_id: Option<String>,
+) -> napi::Result<User> {
+    internal_update_user(email, pass, oauth_provider, oauth_provider_id)
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to update user: {}", e)))
 }

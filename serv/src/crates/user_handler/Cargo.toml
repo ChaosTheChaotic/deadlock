@@ -13,3 +13,4 @@ argon2 = { workspace = true }
 napi-derive = { workspace = true }
 rand_core = { workspace = true }
 napi = { workspace = true, features = ["async"] }
+tokio-postgres = { workspace = true }

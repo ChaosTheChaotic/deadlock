@@ -1,6 +1,7 @@
 import express from "express";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter, Ctx } from "./trpc";
+import oauthRouter from "./oauth";
 import path from "path";
 import { initDbs, initRedis } from "./rlibs";
 import cookieParser from "cookie-parser";
@@ -17,6 +18,8 @@ app.use(helmet());
 
 const SECRET = process.env.COOKIE_SECRET ?? "stupid";
 app.use(cookieParser(SECRET));
+
+app.use(oauthRouter);
 
 app.use(
   "/trpc",
