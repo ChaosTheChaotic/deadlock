@@ -39,6 +39,23 @@ psql -h /var/run/postgresql -U "$POSTGRES_USER" -d "uidb" <<EOF
 -- Create extension if not exists
 CREATE EXTENSION IF NOT EXISTS citext;
 
+CREATE TABLE IF NOT EXISTS public.Perms (
+  perm_id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  perm VARCHAR(50) UNIQUE NOT NULL,
+  desc TEXT
+);
+
+CREATE TABLE IF NOT EXISTS public.Roles (
+  role_id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  role_name VARCHAR(50) UNIQUE NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.Role_Perms (
+  role_id INT REFERENCES public.Roles(role_id) ON DELETE CASCADE,
+  perm_id INT REFERENCES public.Perms(perm_id) ON DELETE CASCADE,
+  PRIMARY KEY (role_id, perm_id)
+);
+
 -- Create Users table if not exists
 CREATE TABLE IF NOT EXISTS public.Users (
   uid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -53,9 +70,55 @@ CREATE TABLE IF NOT EXISTS public.Users (
   CONSTRAINT oauth_unique_per_provider UNIQUE (OAuth_Provider, OAuth_Provider_ID)
 );
 
--- Create index for faster OAuth lookups
+-- Link users to roles
+CREATE TABLE IF NOT EXISTS public.User_Roles (
+  user_uid UUID REFERENCES public.Users(uid) ON DELETE CASCADE,
+  role_id INT REFERENCES public.Roles(role_id) ON DELETE CASCADE,
+  PRIMARY KEY (user_uid, role_id)
+);
+
+-- Allow directly providing permissions to users
+CREATE TABLE IF NOT EXISTS public.User_Perms (
+  user_uid UUID REFERENCES public.Users(uid) ON DELETE CASCADE,
+  perm_id INT REFERENCES public.Perms(perm_id) ON DELETE CASCADE,
+  PRIMARY KEY (user_uid, perm_id)
+);
+
+INSERT INTO public.Roles (role_name) VALUES 
+('admin'),
+('mod'),
+('user')
+ON CONFLICT (role_name) DO NOTHING;
+
+INSERT INTO public.Perms (perm, desc) VALUES
+('admin:access', 'Can manage users, access admin panel'),
+('users:manage', 'Can create, edit, search, and delete users'),
+('users:create', 'Can create users'),
+('users:edit', 'Can edit users'),
+('users:delete', 'Can delete users'),
+('users:search', 'Can search through users')
+ON CONFLICT (perm) DO NOTHING;
+
+-- Give admin role permissions
+INSERT INTO public.Role_Perms (role_id, perm_id)
+SELECT r.role_id, p.perm_id
+FROM public.Roles r, public.Perms p
+WHERE r.role_name = 'admin'
+ON CONFLICT DO NOTHING;
+
+-- Give mod role permissions
+INSERT INTO public.Role_Perms (role_id, perm_id)
+SELECT r.role_id, p.perm_id
+FROM public.Roles r, public.Perms p
+WHERE r.role_name = 'mod' 
+AND p.perm IN ('users:search', 'users:edit')
+ON CONFLICT DO NOTHING;
+
+-- Create index for faster lookups
 CREATE INDEX IF NOT EXISTS idx_users_oauth ON public.Users(OAuth_Provider, OAuth_Provider_ID);
 CREATE INDEX IF NOT EXISTS idx_users_email ON public.Users(Email);
+CREATE INDEX IF NOT EXISTS idx_users_role ON public.User_Roles(role_id);
+CREATE INDEX IF NOT EXISTS idx_user_perms_user ON public.User_Perms(user_uid);
 EOF
 
 # Configure GRIDS
