@@ -1,6 +1,8 @@
 export interface User {
   uid: string;
   email: string;
+  roles: string[];
+  perms: string[];
 }
 
 export class AuthService {

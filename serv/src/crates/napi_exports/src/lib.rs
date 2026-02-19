@@ -40,9 +40,17 @@ pub async fn update_user(
     roles: Option<Vec<String>>,
     perms: Option<Vec<String>>,
 ) -> napi::Result<User> {
-    internal_update_user(uid, email, pass, oauth_provider, oauth_provider_id, roles, perms)
-        .await
-        .map_err(|e| napi::Error::from_reason(format!("Failed to update user: {}", e)))
+    internal_update_user(
+        uid,
+        email,
+        pass,
+        oauth_provider,
+        oauth_provider_id,
+        roles,
+        perms,
+    )
+    .await
+    .map_err(|e| napi::Error::from_reason(format!("Failed to update user: {}", e)))
 }
 
 #[napi]

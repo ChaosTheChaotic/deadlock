@@ -14,7 +14,12 @@ export interface Ctx {
   refreshToken?: string;
   req: Request;
   res: Response;
-  user?: { uid: string; email: string };
+  user?: {
+    uid: string;
+    email: string;
+    roles: string[];
+    perms: string[];
+  };
   ip?: string;
 }
 
@@ -50,6 +55,11 @@ const authMiddleware = t.middleware(async ({ ctx, next, path }) => {
     const claimsJson = await Rapi.checkAccessJwt(ctx.token);
     const claims = JSON.parse(claimsJson) as { uid: string; email: string };
 
+    // Fetch the full user for all roles/perms access
+    const usrs = await Rapi.searchUsers(claims.email);
+    if (usrs.length === 0) throw new Error("User no longer exists");
+    const fullUser = usrs[0];
+
     if (!claims.uid || !claims.email) {
       throw new TRPCError({
         code: "UNAUTHORIZED",
@@ -61,10 +71,7 @@ const authMiddleware = t.middleware(async ({ ctx, next, path }) => {
     return next({
       ctx: {
         ...ctx,
-        user: {
-          uid: claims.uid,
-          email: claims.email,
-        },
+        user: fullUser,
       },
     });
   } catch (error) {
@@ -82,6 +89,31 @@ const authMiddleware = t.middleware(async ({ ctx, next, path }) => {
     });
   }
 });
+
+const requirePerm = (requiredPerm: string) =>
+  t.middleware(({ ctx, next }) => {
+    if (
+      !ctx.user?.perms.includes(requiredPerm) &&
+      !ctx.user?.roles.includes("admin")
+    ) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `Missing required permission: ${requiredPerm}`,
+      });
+    }
+    return next({ ctx });
+  });
+
+const requireRole = (requiredRole: string) =>
+  t.middleware(({ ctx, next }) => {
+    if (!ctx.user?.roles.includes(requiredRole)) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `Missing required role: ${requiredRole}`,
+      });
+    }
+    return next({ ctx });
+  });
 
 const createRateLimitMiddleware = (config: {
   maxRequests: number;
@@ -153,6 +185,13 @@ export const rateLimitedProcedure: typeof t.procedure = protectedProcedure.use(
   rateLimitMiddleware.authenticated,
 );
 
+export const adminProcedure: typeof t.procedure = protectedProcedure.use(
+  requireRole("admin"),
+);
+export const manageUsersProcedure: typeof t.procedure = protectedProcedure.use(
+  requirePerm("users:manage"),
+);
+
 const COOKIE_OPTS = {
   httpOnly: true,
   secure: true,
@@ -189,7 +228,7 @@ export const appRouter = t.router({
         input.oauthProvider,
       );
     }),
-  deleteUser: protectedProcedure
+  deleteUser: manageUsersProcedure
     .input(z.object({ email: z.email() }))
     .mutation(async ({ input }) => {
       return await Rapi.deleteUser(input.email);
@@ -228,7 +267,7 @@ export const appRouter = t.router({
         maxAge: REFRESH_TOKEN_MAX_AGE,
       });
 
-      return { user: { uid: usr.uid, email: usr.email } };
+      return { user: usr };
     }),
 
   register: t.procedure
@@ -237,7 +276,8 @@ export const appRouter = t.router({
       z.object({
         email: emailSchema,
         pass: passSchema.optional(),
-        oauthProvider: z.string().optional(),
+        roles: z.array(z.string()).optional(),
+        perms: z.array(z.string()).optional(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
@@ -253,7 +293,10 @@ export const appRouter = t.router({
       const user = await Rapi.createUser(
         input.email,
         input.pass,
-        input.oauthProvider,
+        null,
+        null,
+        input.roles,
+        input.perms,
       );
 
       const accessToken = await Rapi.genAccessJwt(user.uid, user.email);
@@ -279,12 +322,7 @@ export const appRouter = t.router({
         });
       }
 
-      return {
-        user: {
-          uid: user.uid,
-          email: user.email,
-        },
-      };
+      return { user };
     }),
 
   refresh: t.procedure
@@ -347,7 +385,11 @@ export const appRouter = t.router({
           maxAge: REFRESH_TOKEN_MAX_AGE,
         });
 
-        return { user: { uid: claims.uid, email: claims.email } };
+        const usrs = await Rapi.searchUsers(claims.email);
+        if (usrs.length === 0) throw new Error("User not found");
+        const fullUser = usrs[0];
+
+        return { user: fullUser, claims };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
         throw new TRPCError({
@@ -393,10 +435,9 @@ export const appRouter = t.router({
       return await Rapi.getRateLimitStats(identifier);
     }),
 
-  resetRateLimit: protectedProcedure
+  resetRateLimit: adminProcedure
     .input(z.object({ identifier: z.string() }))
     .mutation(async ({ input }) => {
-      // TODO: Add admin check
       return await Rapi.resetRateLimit(input.identifier);
     }),
   cleanupRateLimits: protectedProcedure.mutation(async () => {
@@ -404,8 +445,7 @@ export const appRouter = t.router({
     return { cleaned, success: true };
   }),
 
-  // TODO: Add admin check
-  runCleanup: protectedProcedure.mutation(async () => {
+  runCleanup: adminProcedure.mutation(async () => {
     const rateLimitCleaned = await Rapi.cleanupRateLimitKeys();
     const tokenCleaned = await Rapi.cleanupExpiredTokens();
     return {
@@ -415,6 +455,27 @@ export const appRouter = t.router({
       success: true,
     };
   }),
+  updateUser: manageUsersProcedure
+    .input(
+      z.object({
+        uid: z.string(),
+        email: emailSchema.optional(),
+        pass: passSchema.optional(),
+        roles: z.array(z.string()).optional(),
+        perms: z.array(z.string()).optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      return await Rapi.updateUser(
+        input.uid,
+        input.email,
+        input.pass,
+        null,
+        null,
+        input.roles,
+        input.perms,
+      );
+    }),
 });
 
 export type AppRouter = typeof appRouter;

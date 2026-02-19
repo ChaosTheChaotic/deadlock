@@ -42,7 +42,7 @@ CREATE EXTENSION IF NOT EXISTS citext;
 CREATE TABLE IF NOT EXISTS public.Perms (
   perm_id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
   perm VARCHAR(50) UNIQUE NOT NULL,
-  desc TEXT
+  description TEXT
 );
 
 CREATE TABLE IF NOT EXISTS public.Roles (
@@ -90,7 +90,7 @@ INSERT INTO public.Roles (role_name) VALUES
 ('user')
 ON CONFLICT (role_name) DO NOTHING;
 
-INSERT INTO public.Perms (perm, desc) VALUES
+INSERT INTO public.Perms (perm, description) VALUES
 ('admin:access', 'Can manage users, access admin panel'),
 ('users:manage', 'Can create, edit, search, and delete users'),
 ('users:create', 'Can create users'),

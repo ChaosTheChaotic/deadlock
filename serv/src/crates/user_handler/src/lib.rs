@@ -20,10 +20,14 @@ pub fn user_from_row(row: Row) -> User {
 
 pub async fn user_from_uid(uid: impl AsRef<str>) -> napi::Result<Vec<User>> {
     let uid = uid.as_ref(); // I dont want trait bound generic hell
-    let client = get_uidb_pool().get().await.map_err(|e| napi::Error::from_reason(e.to_string()))?;
+    let client = get_uidb_pool()
+        .get()
+        .await
+        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
 
-    let stmt = client.prepare_cached(
-        "SELECT
+    let stmt = client
+        .prepare_cached(
+            "SELECT
             u.uid::text as uid,
             u.email,
             u.password_hash,
@@ -46,15 +50,23 @@ pub async fn user_from_uid(uid: impl AsRef<str>) -> napi::Result<Vec<User>> {
             ) as perms
             FROM public.Users u 
             WHERE u.uid::text ILIKE $1",
-    ).await.map_err(|e| napi::Error::from_reason(e.to_string()))?;
+        )
+        .await
+        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
 
-    let rows = client.query(&stmt, &[&uid]).await.map_err(|e| napi::Error::from_reason(e.to_string()))?;
+    let rows = client
+        .query(&stmt, &[&uid])
+        .await
+        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
     Ok(rows.into_iter().map(user_from_row).collect())
 }
 
 pub async fn search_users(email_str: impl AsRef<str>) -> napi::Result<Vec<User>> {
     let email_str = email_str.as_ref();
-    let client = get_uidb_pool().get().await.map_err(|e| napi::Error::from_reason(e.to_string()))?;
+    let client = get_uidb_pool()
+        .get()
+        .await
+        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
 
     let stmt = client
         .prepare_cached(
@@ -87,7 +99,10 @@ pub async fn search_users(email_str: impl AsRef<str>) -> napi::Result<Vec<User>>
         .await
         .map_err(|e| napi::Error::from_reason(e.to_string()))?;
 
-    let rows = client.query(&stmt, &[&email_str]).await.map_err(|e| napi::Error::from_reason(e.to_string()))?;
+    let rows = client
+        .query(&stmt, &[&email_str])
+        .await
+        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
     Ok(rows.into_iter().map(user_from_row).collect())
 }
 
@@ -111,43 +126,68 @@ pub async fn add_user(
         .map_err(|e| napi::Error::from_reason(format!("Transaction error: {e}")))?;
 
     // Check if user already exists
-    let existing_stmt = tx.prepare_cached(
-        "SELECT uid::text FROM public.Users 
-         WHERE (oauth_provider = $1 AND oauth_provider_id = $2) OR email = $3"
-    ).await.map_err(|e| napi::Error::from_reason(e.to_string()))?;
+    let existing_stmt = tx
+        .prepare_cached(
+            "SELECT uid::text FROM public.Users 
+         WHERE (oauth_provider = $1 AND oauth_provider_id = $2) OR email = $3",
+        )
+        .await
+        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
 
-    let existing_uid: Option<String> = tx.query_opt(&existing_stmt, &[&oauth_provider, &oauth_provider_id, &email])
+    let existing_uid: Option<String> = tx
+        .query_opt(
+            &existing_stmt,
+            &[&oauth_provider, &oauth_provider_id, &email],
+        )
         .await
         .map_err(|e| napi::Error::from_reason(e.to_string()))?
         .map(|row| row.get(0));
 
     if let Some(uid) = existing_uid {
         // If user exists, we perform an update
-        tx.rollback().await.ok(); 
-        return update_user(uid, Some(email), pass, oauth_provider, oauth_provider_id, roles, perms).await;
+        tx.rollback().await.ok();
+        return update_user(
+            uid,
+            Some(email),
+            pass,
+            oauth_provider,
+            oauth_provider_id,
+            roles,
+            perms,
+        )
+        .await;
     }
 
     // Hash password
     let pwd_hash = if let Some(p) = pass {
         let salt = SaltString::generate(&mut rand_core::OsRng);
-        Some(Argon2::default()
-            .hash_password(p.as_bytes(), &salt)
-            .map_err(|e| napi::Error::from_reason(format!("Hashing failed: {e}")))?
-            .to_string())
+        Some(
+            Argon2::default()
+                .hash_password(p.as_bytes(), &salt)
+                .map_err(|e| napi::Error::from_reason(format!("Hashing failed: {e}")))?
+                .to_string(),
+        )
     } else {
         None
     };
 
     // Insert New User
-    let insert_stmt = tx.prepare_cached(
-        "INSERT INTO public.Users (email, password_hash, oauth_provider, oauth_provider_id) 
-         VALUES ($1, $2, $3, $4) RETURNING uid::text"
-    ).await.map_err(|e| napi::Error::from_reason(e.to_string()))?;
+    let insert_stmt = tx
+        .prepare_cached(
+            "INSERT INTO public.Users (email, password_hash, oauth_provider, oauth_provider_id) 
+         VALUES ($1, $2, $3, $4) RETURNING uid::text",
+        )
+        .await
+        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
 
-    let row = tx.query_one(&insert_stmt, &[&email, &pwd_hash, &oauth_provider, &oauth_provider_id])
+    let row = tx
+        .query_one(
+            &insert_stmt,
+            &[&email, &pwd_hash, &oauth_provider, &oauth_provider_id],
+        )
         .await
         .map_err(|e| napi::Error::from_reason(format!("Insert failed: {e}")))?;
-    
+
     let new_uid: String = row.get(0);
 
     // Handle Roles (default to "user" if none provided)
@@ -157,7 +197,9 @@ pub async fn add_user(
             "INSERT INTO public.User_Roles (user_uid, role_id) 
              SELECT $1::uuid, role_id FROM public.Roles WHERE role_name = $2",
             &[&new_uid, &role_name],
-        ).await.ok();
+        )
+        .await
+        .ok();
     }
 
     // Handle direct permissions
@@ -167,13 +209,21 @@ pub async fn add_user(
                 "INSERT INTO public.User_Perms (user_uid, perm_id) 
                  SELECT $1::uuid, perm_id FROM public.Perms WHERE perm = $2",
                 &[&new_uid, &perm_slug],
-            ).await.ok();
+            )
+            .await
+            .ok();
         }
     }
 
-    tx.commit().await.map_err(|e| napi::Error::from_reason(e.to_string()))?;
+    tx.commit()
+        .await
+        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
 
-    Ok(user_from_uid(&new_uid).await?.into_iter().next().ok_or(napi::Error::from_reason("No user returned"))?)
+    user_from_uid(&new_uid)
+        .await?
+        .into_iter()
+        .next()
+        .ok_or(napi::Error::from_reason("No user returned"))
 }
 
 pub async fn validate_pass(email: String, pass: String) -> napi::Result<bool> {
@@ -326,14 +376,18 @@ pub async fn update_user(
         tx.execute(
             "DELETE FROM public.User_Roles WHERE user_uid = $1::uuid",
             &[&uid],
-        ).await.map_err(|e| napi::Error::from_reason(e.to_string()))?;
+        )
+        .await
+        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
 
         for role_name in role_list {
             tx.execute(
                 "INSERT INTO public.User_Roles (user_uid, role_id) 
                  SELECT $1::uuid, role_id FROM public.Roles WHERE role_name = $2",
                 &[&uid, &role_name],
-            ).await.ok(); 
+            )
+            .await
+            .ok();
         }
     }
 
@@ -342,19 +396,29 @@ pub async fn update_user(
         tx.execute(
             "DELETE FROM public.User_Perms WHERE user_uid = $1::uuid",
             &[&uid],
-        ).await.map_err(|e| napi::Error::from_reason(e.to_string()))?;
+        )
+        .await
+        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
 
         for perm_slug in perm_list {
             tx.execute(
                 "INSERT INTO public.User_Perms (user_uid, perm_id) 
                  SELECT $1::uuid, perm_id FROM public.Perms WHERE perm = $2",
                 &[&uid, &perm_slug],
-            ).await.ok();
+            )
+            .await
+            .ok();
         }
     }
 
-    tx.commit().await.map_err(|e| napi::Error::from_reason(e.to_string()))?;
+    tx.commit()
+        .await
+        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
 
     // Return user
-    Ok(user_from_uid(&uid).await?.into_iter().next().ok_or(napi::Error::from_reason("No user returned"))?)
+    user_from_uid(&uid)
+        .await?
+        .into_iter()
+        .next()
+        .ok_or(napi::Error::from_reason("No user returned"))
 }
