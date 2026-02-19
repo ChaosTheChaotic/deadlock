@@ -22,10 +22,27 @@ pub async fn create_user(
     pass: Option<String>,
     oauth_provider: Option<String>,
     oauth_provider_id: Option<String>,
+    roles: Option<Vec<String>>,
+    perms: Option<Vec<String>>,
 ) -> napi::Result<User> {
-    add_user(email, pass, oauth_provider, oauth_provider_id)
+    add_user(email, pass, oauth_provider, oauth_provider_id, roles, perms)
         .await
         .map_err(|e| napi::Error::from_reason(format!("Failed to create user: {}", e)))
+}
+
+#[napi]
+pub async fn update_user(
+    uid: String,
+    email: Option<String>,
+    pass: Option<String>,
+    oauth_provider: Option<String>,
+    oauth_provider_id: Option<String>,
+    roles: Option<Vec<String>>,
+    perms: Option<Vec<String>>,
+) -> napi::Result<User> {
+    internal_update_user(uid, email, pass, oauth_provider, oauth_provider_id, roles, perms)
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Failed to update user: {}", e)))
 }
 
 #[napi]
@@ -84,7 +101,6 @@ pub async fn rotate_refresh_jwt(token: String) -> napi::Result<(String, String, 
         .map_err(|e| napi::Error::from_reason(format!("Failed to rotate refresh token: {}", e)))
 }
 
-// Redis handler functions
 #[napi]
 pub async fn init_redis() -> napi::Result<()> {
     redis_handler::init_redis()
@@ -199,16 +215,4 @@ pub async fn cleanup_rate_limit_keys() -> napi::Result<u32> {
     redis_handler::cleanup_rate_limit_keys()
         .await
         .map_err(|e| napi::Error::from_reason(format!("Failed to cleanup rate limit keys: {}", e)))
-}
-
-#[napi]
-pub async fn update_user(
-    email: String,
-    pass: Option<String>,
-    oauth_provider: Option<String>,
-    oauth_provider_id: Option<String>,
-) -> napi::Result<User> {
-    internal_update_user(email, pass, oauth_provider, oauth_provider_id)
-        .await
-        .map_err(|e| napi::Error::from_reason(format!("Failed to update user: {}", e)))
 }

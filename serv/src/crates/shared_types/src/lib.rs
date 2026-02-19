@@ -15,6 +15,8 @@ pub struct User {
     pub oauth_provider: Option<String>,
     pub oauth_provider_id: Option<String>,
     pub create_time: f64,
+    pub roles: Vec<String>,
+    pub perms: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
