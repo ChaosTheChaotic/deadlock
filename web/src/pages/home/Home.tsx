@@ -57,12 +57,24 @@ export const HomePage = () => {
     showCheckPassword: false,
   });
 
+  const [editState, setEditState] = useState({
+    uid: "",
+    email: "",
+    password: "",
+    roles: "",
+    perms: "",
+    // For frontend view
+    status: "idle",
+    message: "",
+  });
+
   const { user, logout } = useAuth();
 
   const debouncedDB = useDebounce(search.db, 500);
 
   const addUserMutation = trpc.addUser.useMutation();
   const deleteUserMutation = trpc.deleteUser.useMutation();
+  const updateUserMutation = trpc.updateUser.useMutation();
   const utils = trpc.useUtils();
 
   const { data: users, isLoading: isUsersLoading } = trpc.searchUsers.useQuery(
@@ -219,6 +231,59 @@ export const HomePage = () => {
         ...prev,
         result: `Error: ${error instanceof Error ? error.message : "Failed to check password"}`,
         isLoading: false,
+      }));
+    }
+  };
+
+  const handleEditInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setEditState((prev) => ({
+      ...prev,
+      [name]: value,
+      status: "idle",
+      message: "",
+    }));
+  };
+
+  const handleUpdateUser = async () => {
+    if (!editState.uid.trim()) {
+      setEditState((prev) => ({
+	...prev,
+	status: "error",
+	message: "UID is required to update a user",
+      }));
+      return;
+    }
+
+    try {
+      const rolesArray = editState.roles.split(",").map(r => r.trim()).filter(Boolean);
+      const permsArray = editState.perms.split(",").map(p => p.trim()).filter(Boolean);
+
+      const updatedUser = await updateUserMutation.mutateAsync({
+	uid: editState.uid,
+	pass: editState.password || undefined,
+	roles: rolesArray.length > 0 ? rolesArray : undefined,
+	perms: permsArray.length > 0 ? permsArray : undefined,
+      });
+
+      setEditState({
+	uid: "",
+	email: "",
+	password: "",
+	roles: "",
+	perms: "",
+	status: "success",
+	message: `User updated successfully! UID: ${updatedUser.uid}`,
+      });
+
+      // Refresh the user search list
+      utils.searchUsers.invalidate({ email: debouncedDB });
+    } catch (error) {
+      console.error("Update user error:", error);
+      setEditState((prev) => ({
+	...prev,
+	status: "error",
+	message: `Error: ${error instanceof Error ? error.message : "Failed to update user"}`,
       }));
     }
   };
@@ -394,6 +459,76 @@ export const HomePage = () => {
               </div>
             )}
           </section>
+	  {/* Edit User / Assign Permissions Section */}
+	  <section className="edit-user-section">
+	    <h3>Update User / Assign Access</h3>
+	    <p className="helper-text">Leave fields blank if you don't want to change them. Comma-separate roles/perms.</p>
+
+	    <div className="form-group">
+	      <input
+		type="text"
+		name="uid"
+		value={editState.uid}
+		onChange={handleEditInputChange}
+		placeholder="Target User UID (required)"
+		className="form-input"
+	      />
+	    </div>
+
+	    <div className="form-group">
+	      <input
+		type="password"
+		name="password"
+		value={editState.password}
+		onChange={handleEditInputChange}
+		placeholder="New Password"
+		className="form-input"
+	      />
+	    </div>
+
+	    <div className="form-group">
+	      <input
+		type="text"
+		name="roles"
+		value={editState.roles}
+		onChange={handleEditInputChange}
+		placeholder="Roles (e.g., admin, user)"
+		className="form-input"
+	      />
+	    </div>
+
+	    <div className="form-group">
+	      <input
+		type="text"
+		name="perms"
+		value={editState.perms}
+		onChange={handleEditInputChange}
+		placeholder="Permissions (e.g., users:edit, users:manage)"
+		className="form-input"
+	      />
+	    </div>
+
+	    <button
+	      type="button"
+	      disabled={!editState.uid || updateUserMutation.isPending}
+	      onClick={handleUpdateUser}
+	      className={`submit-button ${updateUserMutation.isPending ? "loading" : ""}`}
+	    >
+	      {updateUserMutation.isPending ? "Updating..." : "Update User"}
+	    </button>
+
+	    {/* Status Messages */}
+	    {editState.status === "success" && (
+	      <div className="delete-status success">
+		<p>{editState.message}</p>
+	      </div>
+	    )}
+	    {editState.status === "error" && (
+	      <div className="delete-status error">
+		<p>{editState.message}</p>
+	      </div>
+	    )}
+	  </section>
         </div>
       ) : (
         <LoginForm />
