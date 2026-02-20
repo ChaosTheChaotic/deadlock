@@ -186,7 +186,7 @@ router.get("/auth/google/callback", async (req, res) => {
       ) {
         user = existingUser;
       } else if (!existingUser.oauthProvider && !existingUser.oauthProviderId) {
-        user = await Rapi.updateUser(email, undefined, "google", googleId);
+	user = await Rapi.updateUser(existingUser.uid, undefined, undefined, "google", googleId);
         console.log(`Linked Google account to existing user: ${email}`);
       } else {
         throw new Error(

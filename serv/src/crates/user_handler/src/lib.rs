@@ -362,7 +362,7 @@ pub async fn update_user(
     if !updates.is_empty() {
         params.push(&uid);
         let query = format!(
-            "UPDATE public.Users SET {} WHERE uid = ${}::uuid",
+            "UPDATE public.Users SET {} WHERE uid = CAST(${} AS text)::uuid",
             updates.join(", "),
             param_counter
         );
@@ -374,7 +374,7 @@ pub async fn update_user(
     // Handle roles
     if let Some(role_list) = roles {
         tx.execute(
-            "DELETE FROM public.User_Roles WHERE user_uid = $1::uuid",
+            "DELETE FROM public.User_Roles WHERE user_uid = CAST($1 AS text)::uuid",
             &[&uid],
         )
         .await
@@ -394,7 +394,7 @@ pub async fn update_user(
     // Handle direct permissions
     if let Some(perm_list) = perms {
         tx.execute(
-            "DELETE FROM public.User_Perms WHERE user_uid = $1::uuid",
+            "DELETE FROM public.User_Perms WHERE user_uid = CAST($1 AS text)::uuid",
             &[&uid],
         )
         .await
