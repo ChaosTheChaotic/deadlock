@@ -100,7 +100,7 @@ pub async fn search_users(email_str: impl AsRef<str>) -> napi::Result<Vec<User>>
         .map_err(|e| napi::Error::from_reason(e.to_string()))?;
 
     let rows = client
-        .query(&stmt, &[&email_str])
+        .query(&stmt, &[&format!("%{}%", email_str)])
         .await
         .map_err(|e| napi::Error::from_reason(e.to_string()))?;
     Ok(rows.into_iter().map(user_from_row).collect())

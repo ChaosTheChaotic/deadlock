@@ -38,6 +38,35 @@ export const t = initTRPC.context<Ctx>().create({
   },
 });
 
+const PERM_MAP: Record<string, string[]> = {
+  "users:manage": ["users:create", "users:edit", "users:delete", "users:search"],
+  "admin:access": ["users:manage"],
+};
+
+function hasEffectivePerm(userPerms: string[], required: string): boolean {
+  if (userPerms.includes(required)) return true;
+  
+  return Object.entries(PERM_MAP).some(([parent, children]) => 
+    userPerms.includes(parent) && children.includes(required)
+  );
+}
+
+const checkPerms = (required: string) => 
+  t.middleware(async ({ ctx, next }) => {
+    if (!ctx.user) {
+      throw new TRPCError({ code: "UNAUTHORIZED" });
+    }
+
+    if (!hasEffectivePerm(ctx.user.perms, required)) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `Missing permission: ${required}`,
+      });
+    }
+
+    return next({ ctx });
+  });
+
 const authMiddleware = t.middleware(async ({ ctx, next, path }) => {
   if (["login", "register", "refresh", "logout"].includes(path)) {
     return next({ ctx });
@@ -89,31 +118,6 @@ const authMiddleware = t.middleware(async ({ ctx, next, path }) => {
     });
   }
 });
-
-const requirePerm = (requiredPerm: string) =>
-  t.middleware(({ ctx, next }) => {
-    if (
-      !ctx.user?.perms.includes(requiredPerm) &&
-      !ctx.user?.roles.includes("admin")
-    ) {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: `Missing required permission: ${requiredPerm}`,
-      });
-    }
-    return next({ ctx });
-  });
-
-const requireRole = (requiredRole: string) =>
-  t.middleware(({ ctx, next }) => {
-    if (!ctx.user?.roles.includes(requiredRole)) {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: `Missing required role: ${requiredRole}`,
-      });
-    }
-    return next({ ctx });
-  });
 
 const createRateLimitMiddleware = (config: {
   maxRequests: number;
@@ -185,13 +189,6 @@ export const rateLimitedProcedure: typeof t.procedure = protectedProcedure.use(
   rateLimitMiddleware.authenticated,
 );
 
-export const adminProcedure: typeof t.procedure = protectedProcedure.use(
-  requireRole("admin"),
-);
-export const manageUsersProcedure: typeof t.procedure = protectedProcedure.use(
-  requirePerm("users:manage"),
-);
-
 const COOKIE_OPTS = {
   httpOnly: true,
   secure: true,
@@ -204,6 +201,7 @@ const COOKIE_OPTS = {
 
 export const appRouter = t.router({
   searchUsers: protectedProcedure
+    .use(checkPerms("users:search"))
     .input(z.object({ email: z.string() }))
     .query(async ({ input }) => {
       return await Rapi.searchUsers(input.email);
@@ -214,6 +212,7 @@ export const appRouter = t.router({
       return await Rapi.checkPass(input.email, input.pass);
     }),
   addUser: protectedProcedure
+    .use(checkPerms("users:create"))
     .input(
       z.object({
         email: z.email(),
@@ -228,7 +227,8 @@ export const appRouter = t.router({
         input.oauthProvider,
       );
     }),
-  deleteUser: manageUsersProcedure
+  deleteUser: protectedProcedure
+    .use(checkPerms("users:delete"))
     .input(z.object({ email: z.email() }))
     .mutation(async ({ input }) => {
       return await Rapi.deleteUser(input.email);
@@ -435,7 +435,7 @@ export const appRouter = t.router({
       return await Rapi.getRateLimitStats(identifier);
     }),
 
-  resetRateLimit: adminProcedure
+  resetRateLimit: protectedProcedure.use(checkPerms("admin:access"))
     .input(z.object({ identifier: z.string() }))
     .mutation(async ({ input }) => {
       return await Rapi.resetRateLimit(input.identifier);
@@ -445,7 +445,7 @@ export const appRouter = t.router({
     return { cleaned, success: true };
   }),
 
-  runCleanup: adminProcedure.mutation(async () => {
+  runCleanup: protectedProcedure.use(checkPerms("admin:access")).mutation(async () => {
     const rateLimitCleaned = await Rapi.cleanupRateLimitKeys();
     const tokenCleaned = await Rapi.cleanupExpiredTokens();
     return {
@@ -455,7 +455,7 @@ export const appRouter = t.router({
       success: true,
     };
   }),
-  updateUser: manageUsersProcedure
+  updateUser: protectedProcedure.use(checkPerms("users:edit"))
     .input(
       z.object({
         uid: z.string(),
