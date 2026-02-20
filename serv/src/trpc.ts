@@ -39,19 +39,25 @@ export const t = initTRPC.context<Ctx>().create({
 });
 
 const PERM_MAP: Record<string, string[]> = {
-  "users:manage": ["users:create", "users:edit", "users:delete", "users:search"],
+  "users:manage": [
+    "users:create",
+    "users:edit",
+    "users:delete",
+    "users:search",
+  ],
   "admin:access": ["users:manage"],
 };
 
 function hasEffectivePerm(userPerms: string[], required: string): boolean {
   if (userPerms.includes(required)) return true;
-  
-  return Object.entries(PERM_MAP).some(([parent, children]) => 
-    userPerms.includes(parent) && children.includes(required)
+
+  return Object.entries(PERM_MAP).some(
+    ([parent, children]) =>
+      userPerms.includes(parent) && children.includes(required),
   );
 }
 
-const checkPerms = (required: string) => 
+const checkPerms = (required: string) =>
   t.middleware(async ({ ctx, next }) => {
     if (!ctx.user) {
       throw new TRPCError({ code: "UNAUTHORIZED" });
@@ -435,7 +441,8 @@ export const appRouter = t.router({
       return await Rapi.getRateLimitStats(identifier);
     }),
 
-  resetRateLimit: protectedProcedure.use(checkPerms("admin:access"))
+  resetRateLimit: protectedProcedure
+    .use(checkPerms("admin:access"))
     .input(z.object({ identifier: z.string() }))
     .mutation(async ({ input }) => {
       return await Rapi.resetRateLimit(input.identifier);
@@ -445,16 +452,18 @@ export const appRouter = t.router({
     return { cleaned, success: true };
   }),
 
-  runCleanup: protectedProcedure.use(checkPerms("admin:access")).mutation(async () => {
-    const rateLimitCleaned = await Rapi.cleanupRateLimitKeys();
-    const tokenCleaned = await Rapi.cleanupExpiredTokens();
-    return {
-      rateLimitCleaned,
-      tokenCleaned,
-      totalCleaned: rateLimitCleaned + tokenCleaned,
-      success: true,
-    };
-  }),
+  runCleanup: protectedProcedure
+    .use(checkPerms("admin:access"))
+    .mutation(async () => {
+      const rateLimitCleaned = await Rapi.cleanupRateLimitKeys();
+      const tokenCleaned = await Rapi.cleanupExpiredTokens();
+      return {
+        rateLimitCleaned,
+        tokenCleaned,
+        totalCleaned: rateLimitCleaned + tokenCleaned,
+        success: true,
+      };
+    }),
   updateUser: protectedProcedure
     .input(
       z.object({
@@ -467,20 +476,23 @@ export const appRouter = t.router({
     )
     .mutation(async ({ ctx, input }) => {
       const isTargetUser = ctx.user?.uid === input.uid;
-      const hasEditPermission = ctx.user ? hasEffectivePerm(ctx.user.perms, "users:edit") : false;
+      const hasEditPermission = ctx.user
+        ? hasEffectivePerm(ctx.user.perms, "users:edit")
+        : false;
 
       if (!isTargetUser && !hasEditPermission) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "You can only modify your own account unless you have the right permissions.",
+          message:
+            "You can only modify your own account unless you have the right permissions.",
         });
       }
 
       // Only users with users:edit can change roles or permissions (prevent self-escalation)
-      const isTryingToChangeAccess = 
-        (input.roles !== undefined && input.roles.length > 0) || 
+      const isTryingToChangeAccess =
+        (input.roles !== undefined && input.roles.length > 0) ||
         (input.perms !== undefined && input.perms.length > 0);
-        
+
       if (isTryingToChangeAccess && !hasEditPermission) {
         throw new TRPCError({
           code: "FORBIDDEN",
