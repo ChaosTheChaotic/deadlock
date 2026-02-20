@@ -455,7 +455,7 @@ export const appRouter = t.router({
       success: true,
     };
   }),
-  updateUser: protectedProcedure.use(checkPerms("users:edit"))
+  updateUser: protectedProcedure
     .input(
       z.object({
         uid: z.string(),
@@ -465,7 +465,28 @@ export const appRouter = t.router({
         perms: z.array(z.string()).optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const isTargetUser = ctx.user?.uid === input.uid;
+      const hasEditPermission = ctx.user ? hasEffectivePerm(ctx.user.perms, "users:edit") : false;
+
+      if (!isTargetUser && !hasEditPermission) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You can only modify your own account unless you have the right permissions.",
+        });
+      }
+
+      // Only users with users:edit can change roles or permissions (prevent self-escalation)
+      const isTryingToChangeAccess = 
+        (input.roles !== undefined && input.roles.length > 0) || 
+        (input.perms !== undefined && input.perms.length > 0);
+        
+      if (isTryingToChangeAccess && !hasEditPermission) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You do not have permission to assign roles or permissions.",
+        });
+      }
       return await Rapi.updateUser(
         input.uid,
         input.email,
