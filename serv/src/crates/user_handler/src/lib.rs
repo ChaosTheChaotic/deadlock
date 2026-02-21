@@ -195,7 +195,7 @@ pub async fn add_user(
     for role_name in target_roles {
         tx.execute(
             "INSERT INTO public.User_Roles (user_uid, role_id) 
-             SELECT $1::uuid, role_id FROM public.Roles WHERE role_name = $2",
+             SELECT CAST($1 AS TEXT)::uuid, role_id FROM public.Roles WHERE role_name = $2",
             &[&new_uid, &role_name],
         )
         .await
@@ -207,7 +207,7 @@ pub async fn add_user(
         for perm_slug in target_perms {
             tx.execute(
                 "INSERT INTO public.User_Perms (user_uid, perm_id) 
-                 SELECT $1::uuid, perm_id FROM public.Perms WHERE perm = $2",
+                 SELECT CAST($1 AS TEXT)::uuid, perm_id FROM public.Perms WHERE perm = $2",
                 &[&new_uid, &perm_slug],
             )
             .await
@@ -379,7 +379,7 @@ pub async fn update_user(
         for role_name in role_list {
             tx.execute(
                 "INSERT INTO public.User_Roles (user_uid, role_id) 
-                 SELECT $1::uuid, role_id FROM public.Roles WHERE role_name = $2",
+                 SELECT CAST($1 AS TEXT)::uuid, role_id FROM public.Roles WHERE role_name = $2",
                 &[&uid, &role_name],
             )
             .await
@@ -399,7 +399,7 @@ pub async fn update_user(
         for perm_slug in perm_list {
             tx.execute(
                 "INSERT INTO public.User_Perms (user_uid, perm_id) 
-                 SELECT $1::uuid, perm_id FROM public.Perms WHERE perm = $2",
+                 SELECT CAST($1 AS TEXT)::uuid, perm_id FROM public.Perms WHERE perm = $2",
                 &[&uid, &perm_slug],
             )
             .await

@@ -39,8 +39,8 @@ export const UserManagement = () => {
     const data = {
       email: formData.get("email") as string,
       pass: (formData.get("pass") as string) || undefined,
-      roles: (formData.get("roles") as string).split(",").map(s => s.trim()),
-      perms: (formData.get("perms") as string).split(",").map(s => s.trim()),
+      roles: (formData.get("roles") as string).split(",").map(s => s.trim()).filter(Boolean),
+      perms: (formData.get("perms") as string).split(",").map(s => s.trim()).filter(Boolean),
     };
 
     if (editingUser) {
