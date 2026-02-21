@@ -36,7 +36,6 @@ fi
 # Configure UIDB
 echo "Configuring UIDB database..."
 psql -h /var/run/postgresql -U "$POSTGRES_USER" -d "uidb" <<EOF
--- Create extension if not exists
 CREATE EXTENSION IF NOT EXISTS citext;
 
 CREATE TABLE IF NOT EXISTS public.Perms (
