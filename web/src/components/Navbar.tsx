@@ -42,6 +42,9 @@ export const Navbar = () => {
                 User Management
               </Link>
             )}
+	    <Link to="/settings" onClick={() => setMenuOpen(false)}>
+	      Settings
+	    </Link>
             <hr />
             <button className="logout-link" onClick={logout}>
               Sign Out
