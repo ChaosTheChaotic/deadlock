@@ -14,7 +14,7 @@ export const Navbar = () => {
   return (
     <nav className="navbar">
       <div className="nav-brand">
-        <Link to="/">Dashboard</Link>
+        <Link to="/">Home</Link>
       </div>
 
       <div className="nav-dropdown">
@@ -42,9 +42,9 @@ export const Navbar = () => {
                 User Management
               </Link>
             )}
-	    <Link to="/settings" onClick={() => setMenuOpen(false)}>
-	      Settings
-	    </Link>
+            <Link to="/settings" onClick={() => setMenuOpen(false)}>
+              Settings
+            </Link>
             <hr />
             <button className="logout-link" onClick={logout}>
               Sign Out

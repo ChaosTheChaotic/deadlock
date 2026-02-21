@@ -5,15 +5,21 @@ import { useAuth } from "@hooks/index";
 
 export const SettingsPage = () => {
   const { user } = useAuth();
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const updateMutation = trpc.updateUser.useMutation({
     onSuccess: () => {
-      setMessage({ type: "success", text: "Account settings updated successfully!" });
+      setMessage({
+        type: "success",
+        text: "Account settings updated successfully!",
+      });
     },
     onError: (error) => {
       setMessage({ type: "error", text: error.message });
-    }
+    },
   });
 
   const handleSave = (e: React.SyntheticEvent<HTMLFormElement>) => {
@@ -29,7 +35,7 @@ export const SettingsPage = () => {
     updateMutation.mutate({
       uid: user.uid,
       email: email,
-      pass: pass || undefined, 
+      pass: pass || undefined,
     });
   };
 
@@ -43,22 +49,29 @@ export const SettingsPage = () => {
           <h2>Account Settings</h2>
         </header>
 
-        <div className="settings-form-container" style={{ maxWidth: "500px", marginTop: "2rem" }}>
+        <div
+          className="settings-form-container"
+          style={{ maxWidth: "500px", marginTop: "2rem" }}
+        >
           {message && (
-            <div 
-              style={{ 
-                padding: "1rem", 
-                marginBottom: "1rem", 
+            <div
+              style={{
+                padding: "1rem",
+                marginBottom: "1rem",
                 borderRadius: "4px",
-                backgroundColor: message.type === "success" ? "#d4edda" : "#f8d7da",
-                color: message.type === "success" ? "#155724" : "#721c24"
+                backgroundColor:
+                  message.type === "success" ? "#d4edda" : "#f8d7da",
+                color: message.type === "success" ? "#155724" : "#721c24",
               }}
             >
               {message.text}
             </div>
           )}
 
-          <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <form
+            onSubmit={handleSave}
+            style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+          >
             <div style={{ display: "flex", flexDirection: "column" }}>
               <label htmlFor="email">Email Address</label>
               <input
@@ -75,11 +88,11 @@ export const SettingsPage = () => {
               <label htmlFor="pass">
                 New Password <small>(Leave blank to keep current)</small>
               </label>
-              <input 
+              <input
                 id="pass"
-                name="pass" 
-                type="password" 
-                placeholder="••••••••" 
+                name="pass"
+                type="password"
+                placeholder="••••••••"
                 style={{ padding: "0.5rem", marginTop: "0.25rem" }}
               />
             </div>
