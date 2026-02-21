@@ -32,4 +32,5 @@ export const {
   resetRateLimit,
   cleanupRateLimitKeys,
   updateUser,
+  uidLookup,
 } = ebinding;

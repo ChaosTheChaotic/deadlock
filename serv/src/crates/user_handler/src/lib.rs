@@ -18,7 +18,7 @@ pub fn user_from_row(row: Row) -> User {
     }
 }
 
-pub async fn user_from_uid(uid: impl AsRef<str>) -> napi::Result<Vec<User>> {
+pub async fn user_from_uid(uid: impl AsRef<str>) -> napi::Result<User> {
     let uid = uid.as_ref(); // I dont want trait bound generic hell
     let client = get_uidb_pool()
         .get()
@@ -58,7 +58,7 @@ pub async fn user_from_uid(uid: impl AsRef<str>) -> napi::Result<Vec<User>> {
         .query(&stmt, &[&uid])
         .await
         .map_err(|e| napi::Error::from_reason(e.to_string()))?;
-    Ok(rows.into_iter().map(user_from_row).collect())
+    rows.into_iter().map(user_from_row).next().ok_or(napi::Error::from_reason("No users returned"))
 }
 
 pub async fn search_users(email_str: impl AsRef<str>) -> napi::Result<Vec<User>> {
@@ -219,11 +219,7 @@ pub async fn add_user(
         .await
         .map_err(|e| napi::Error::from_reason(e.to_string()))?;
 
-    user_from_uid(&new_uid)
-        .await?
-        .into_iter()
-        .next()
-        .ok_or(napi::Error::from_reason("No user returned"))
+    user_from_uid(&new_uid).await
 }
 
 pub async fn validate_pass(email: String, pass: String) -> napi::Result<bool> {
@@ -416,9 +412,5 @@ pub async fn update_user(
         .map_err(|e| napi::Error::from_reason(e.to_string()))?;
 
     // Return user
-    user_from_uid(&uid)
-        .await?
-        .into_iter()
-        .next()
-        .ok_or(napi::Error::from_reason("No user returned"))
+    user_from_uid(&uid).await
 }

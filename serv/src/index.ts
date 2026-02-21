@@ -3,10 +3,10 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter, Ctx } from "./trpc";
 import oauthRouter from "./oauth";
 import path from "path";
-import { initDbs, initRedis } from "./rlibs";
+import { initDbs, initRedis, uidLookup } from "./rlibs";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
-import { cleanupExpiredTokens, cleanupRateLimitKeys } from "./rlibs/index";
+import { cleanupExpiredTokens, cleanupRateLimitKeys, checkAccessJwt } from "./rlibs/index";
 
 const app = express();
 const port = process.env.PORT ?? 8888;
@@ -25,27 +25,25 @@ app.use(
   "/trpc",
   createExpressMiddleware({
     router: appRouter,
-    createContext: ({ req, res }): Ctx => {
-      const signedCookies = req.signedCookies as Record<
-        string,
-        string | undefined
-      >;
+    createContext: async ({ req, res }): Promise<Ctx> => {
+      const token = req.signedCookies["__Host-accessToken"];
+      let user;
 
-      const ip = req.headers["x-forwarded-for"]
-        ? (req.headers["x-forwarded-for"] as string).split(",")[0].trim()
-        : req.socket.remoteAddress;
+      if (token) {
+	try {
+	  const jwtResultRaw = await checkAccessJwt(token); 
+	  const jwtData = JSON.parse(jwtResultRaw);
 
-      const token = signedCookies["__Host-accessToken"];
-      const refreshToken = signedCookies["__Host-refreshToken"];
+	  if (jwtData.uid) {
+	    user = await uidLookup(jwtData.uid);
+	  }
+	} catch (e) {
+	  console.error("Token validation failed", e);
+	}
+      }
 
-      return {
-        token,
-        refreshToken,
-        req,
-        res,
-        ip,
-      };
-    },
+      return { token, req, res, user, ip: req.ip };
+    }
   }),
 );
 

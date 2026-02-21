@@ -56,6 +56,8 @@ export declare function searchUsers(emailStr: string): Promise<Array<User>>
 
 export declare function storeRefreshToken(jti: string, userId: string, email: string, expiresInSeconds: number): Promise<boolean>
 
+export declare function uidLookup(uid: string): Promise<User>
+
 export declare function updateUser(uid: string, email?: string | undefined | null, pass?: string | undefined | null, oauthProvider?: string | undefined | null, oauthProviderId?: string | undefined | null, roles?: Array<string> | undefined | null, perms?: Array<string> | undefined | null): Promise<User>
 
 export declare function validateRefreshToken(jti: string): Promise<boolean>
