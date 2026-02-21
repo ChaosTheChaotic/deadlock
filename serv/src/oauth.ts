@@ -269,8 +269,7 @@ router.get("/auth/status", async (req, res) => {
   }
 
   try {
-    const claimsJson = await Rapi.checkAccessJwt(token);
-    const claims = JSON.parse(claimsJson) as Rapi.RefreshTokenClaims;
+    const claims = await Rapi.checkAccessJwt(token);
     res.json({ authenticated: true, user: claims });
   } catch {
     res.json({ authenticated: false });

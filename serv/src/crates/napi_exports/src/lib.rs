@@ -1,14 +1,14 @@
 use db::initialize_dbs;
 use jwt_handler::{
-    gen_access_token, gen_refresh_token, rotate_refresh_token, verify_access_token,
-    verify_refresh_token,
+    AccessTokenClaims, RefreshTokenClaims, gen_access_token, gen_refresh_token,
+    rotate_refresh_token, verify_access_token, verify_refresh_token,
 };
 use napi_derive::napi;
 use redis_handler::RefreshTokenData;
 use shared_types::User;
 use user_handler::{
     add_user, delete_user as internal_delete_users, search_users as internal_search_users,
-    update_user as internal_update_user, validate_pass, user_from_uid
+    update_user as internal_update_user, user_from_uid, validate_pass,
 };
 
 #[napi]
@@ -89,14 +89,14 @@ pub async fn gen_refresh_jwt(uid: String, email: String) -> napi::Result<(String
 }
 
 #[napi]
-pub async fn check_access_jwt(token: String) -> napi::Result<String> {
+pub async fn check_access_jwt(token: String) -> napi::Result<AccessTokenClaims> {
     verify_access_token(&token)
         .await
         .map_err(|e| napi::Error::from_reason(format!("Invalid access token: {e}")))
 }
 
 #[napi]
-pub async fn check_refresh_jwt(token: String) -> napi::Result<String> {
+pub async fn check_refresh_jwt(token: String) -> napi::Result<RefreshTokenClaims> {
     verify_refresh_token(&token)
         .await
         .map_err(|e| napi::Error::from_reason(format!("Invalid refresh token: {e}")))
@@ -146,9 +146,7 @@ pub async fn delete_refresh_token(jti: String) -> napi::Result<bool> {
 pub async fn delete_user_refresh_tokens(user_id: String) -> napi::Result<u32> {
     redis_handler::delete_user_refresh_tokens(user_id)
         .await
-        .map_err(|e| {
-            napi::Error::from_reason(format!("Failed to delete user refresh tokens: {e}"))
-        })
+        .map_err(|e| napi::Error::from_reason(format!("Failed to delete user refresh tokens: {e}")))
 }
 
 #[napi]

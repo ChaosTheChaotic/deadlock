@@ -17,7 +17,7 @@ export const HomePage = () => {
           <span>Role: {user.roles[0] || "User"}</span>
         </div>
       </header>
-      
+
       <section className="overview">
         <p>Use the navigation menu above to access your assigned tools.</p>
       </section>

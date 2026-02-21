@@ -58,7 +58,10 @@ pub async fn user_from_uid(uid: impl AsRef<str>) -> napi::Result<User> {
         .query(&stmt, &[&uid])
         .await
         .map_err(|e| napi::Error::from_reason(e.to_string()))?;
-    rows.into_iter().map(user_from_row).next().ok_or(napi::Error::from_reason("No users returned"))
+    rows.into_iter()
+        .map(user_from_row)
+        .next()
+        .ok_or(napi::Error::from_reason("No users returned"))
 }
 
 pub async fn search_users(email_str: impl AsRef<str>) -> napi::Result<Vec<User>> {

@@ -3,7 +3,7 @@ import { Navbar } from "@components/index";
 
 export const AdminDashboard = () => {
   const cleanup = trpc.runCleanup.useMutation();
-  
+
   const handleSystemMaintenance = async () => {
     const res = await cleanup.mutateAsync();
     alert(`Cleanup complete! Removed ${res.totalCleaned} expired entries.`);
@@ -14,12 +14,12 @@ export const AdminDashboard = () => {
       <Navbar />
       <main className="content">
         <h1>System Administration</h1>
-        
+
         <div className="dashboard-grid">
           <section className="stat-card">
             <h3>Maintenance</h3>
             <p>Clear expired sessions and rate-limit history.</p>
-            <button 
+            <button
               disabled={cleanup.isPending}
               onClick={handleSystemMaintenance}
               className="action-button"
@@ -30,7 +30,10 @@ export const AdminDashboard = () => {
 
           <section className="stat-card">
             <h3>Security Policy</h3>
-            <p>Active Perm Map: <code>users:manage</code> → <code>create, edit, delete, search</code></p>
+            <p>
+              Active Perm Map: <code>users:manage</code> →{" "}
+              <code>create, edit, delete, search</code>
+            </p>
           </section>
         </div>
       </main>

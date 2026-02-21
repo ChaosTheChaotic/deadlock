@@ -87,8 +87,7 @@ const authMiddleware = t.middleware(async ({ ctx, next, path }) => {
   }
 
   try {
-    const claimsJson = await Rapi.checkAccessJwt(ctx.token);
-    const claims = JSON.parse(claimsJson) as { uid: string; email: string };
+    const claims = await Rapi.checkAccessJwt(ctx.token);
 
     // Fetch the full user for all roles/perms access
     const usrs = await Rapi.searchUsers(claims.email);
@@ -343,12 +342,7 @@ export const appRouter = t.router({
       }
 
       try {
-        const claimsJson = await Rapi.checkRefreshJwt(refreshToken);
-        const claims = JSON.parse(claimsJson) as {
-          jti: string;
-          uid: string;
-          email: string;
-        };
+        const claims = await Rapi.checkRefreshJwt(refreshToken);
 
         const isValid = await Rapi.validateRefreshToken(claims.jti);
         if (!isValid) {
@@ -412,8 +406,7 @@ export const appRouter = t.router({
 
       if (refreshToken) {
         try {
-          const claimsJson = await Rapi.checkRefreshJwt(refreshToken);
-          const claims = JSON.parse(claimsJson) as { jti: string };
+          const claims = await Rapi.checkRefreshJwt(refreshToken);
           await Rapi.deleteRefreshToken(claims.jti);
         } catch {
           /* ignore */

@@ -6,7 +6,11 @@ import path from "path";
 import { initDbs, initRedis, uidLookup } from "./rlibs";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
-import { cleanupExpiredTokens, cleanupRateLimitKeys, checkAccessJwt } from "./rlibs/index";
+import {
+  cleanupExpiredTokens,
+  cleanupRateLimitKeys,
+  checkAccessJwt,
+} from "./rlibs/index";
 
 const app = express();
 const port = process.env.PORT ?? 8888;
@@ -26,24 +30,27 @@ app.use(
   createExpressMiddleware({
     router: appRouter,
     createContext: async ({ req, res }): Promise<Ctx> => {
-      const token = req.signedCookies["__Host-accessToken"];
+      const signedCookies = req.signedCookies as Record<
+        string,
+        string | undefined
+      >;
+      const token = signedCookies["__Host-accessToken"];
       let user;
 
       if (token) {
-	try {
-	  const jwtResultRaw = await checkAccessJwt(token); 
-	  const jwtData = JSON.parse(jwtResultRaw);
+        try {
+          const jwtData = await checkAccessJwt(token);
 
-	  if (jwtData.uid) {
-	    user = await uidLookup(jwtData.uid);
-	  }
-	} catch (e) {
-	  console.error("Token validation failed", e);
-	}
+          if (jwtData.uid) {
+            user = await uidLookup(jwtData.uid);
+          }
+        } catch (e) {
+          console.error("Token validation failed", e);
+        }
       }
 
       return { token, req, res, user, ip: req.ip };
-    }
+    },
   }),
 );
 
