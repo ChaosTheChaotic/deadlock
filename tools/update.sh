@@ -25,8 +25,4 @@ update_dir "$PR/serv" "false"
 
 CRATES="${PR%/}/serv/src/crates"
 update_dir "$CRATES/napi_exports" "false"
-
-for dir in "$CRATES"/*/; do
-  dirn="${dir%/}"
-  update_dir "$dirn" "true"
-done
+update_dir "$CRATES" "true"

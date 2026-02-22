@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
  */
 export function useDebounce<T>(val: T, delay: number): T {
   const [d, sd] = useState(val);
-  const tr = useRef<number | null>(null);
+  const tr = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (tr.current !== null) {

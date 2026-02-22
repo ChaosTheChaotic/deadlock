@@ -1,0 +1,6 @@
+bin/
+.direnv/
+db/redis/
+db/data/
+
+*.prod

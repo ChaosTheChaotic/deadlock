@@ -1,25 +1,31 @@
-import {
-  createTRPCClient,
-  createTRPCReact,
-  httpBatchLink,
-} from "@trpc/react-query";
+import { createTRPCReact } from "@trpc/react-query";
+import { httpBatchLink } from "@trpc/client";
 import type { AppRouter } from "@serv/trpc";
 import { QueryClient } from "@tanstack/react-query";
 
 export const trpc = createTRPCReact<AppRouter>();
-
-export const trpcClient = createTRPCClient<AppRouter>({
-  links: [
-    httpBatchLink({
-      url: "/trpc",
-    }),
-  ],
-});
-
 export const qc = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
+      retry: false,
     },
   },
+});
+
+export const trpcClient = trpc.createClient({
+  links: [
+    httpBatchLink({
+      url: "/trpc",
+      headers() {
+        return {};
+      },
+      fetch(url, options) {
+        return fetch(url, {
+          ...options,
+          credentials: "include", // Important: send cookies
+        });
+      },
+    }),
+  ],
 });
