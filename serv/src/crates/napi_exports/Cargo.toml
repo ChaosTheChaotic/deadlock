@@ -13,6 +13,7 @@ db = { workspace = true }
 user_handler = { workspace = true }
 jwt_handler = { workspace = true }
 redis_handler = { workspace = true }
+logger = { workspace = true }
 
 napi-derive = { workspace = true }
 napi = { workspace = true, features = ["async"] }

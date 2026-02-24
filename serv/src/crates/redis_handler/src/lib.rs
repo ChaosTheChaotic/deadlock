@@ -6,6 +6,7 @@ use std::env;
 use std::time::{SystemTime, UNIX_EPOCH};
 use thiserror::Error;
 use tokio::sync::OnceCell;
+use tracing::instrument;
 
 static REDIS_POOL: OnceCell<deadpool_redis::Pool> = OnceCell::const_new();
 
@@ -74,6 +75,7 @@ pub struct RateLimitConfig {
 }
 
 impl RefreshTokenData {
+    #[instrument(ret)]
     pub fn is_expired(&self) -> bool {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -83,6 +85,7 @@ impl RefreshTokenData {
     }
 }
 
+#[instrument(err)]
 pub async fn init_redis() -> Result<(), RedisHandlerError> {
     dotenv::dotenv().ok();
 
@@ -118,6 +121,7 @@ fn get_redis_pool() -> Result<&'static deadpool_redis::Pool, RedisHandlerError> 
         .ok_or(RedisHandlerError::PoolNotInitialized)
 }
 
+#[instrument(err)]
 pub async fn store_refresh_token(
     jti: String,
     user_id: String,
@@ -157,6 +161,7 @@ pub async fn store_refresh_token(
     Ok(true)
 }
 
+#[instrument(err)]
 pub async fn get_refresh_token(jti: String) -> Result<Option<RefreshTokenData>, RedisHandlerError> {
     let pool = get_redis_pool()?;
     let mut conn = pool.get().await?;
@@ -173,6 +178,7 @@ pub async fn get_refresh_token(jti: String) -> Result<Option<RefreshTokenData>, 
     }
 }
 
+#[instrument(err)]
 pub async fn delete_refresh_token(jti: String) -> Result<bool, RedisHandlerError> {
     let pool = get_redis_pool()?;
     let mut conn = pool.get().await?;
@@ -194,6 +200,7 @@ pub async fn delete_refresh_token(jti: String) -> Result<bool, RedisHandlerError
     Ok(deleted > 0)
 }
 
+#[instrument(err)]
 pub async fn delete_user_refresh_tokens(user_id: String) -> Result<u32, RedisHandlerError> {
     let pool = get_redis_pool()?;
     let mut conn = pool.get().await?;
@@ -215,6 +222,7 @@ pub async fn delete_user_refresh_tokens(user_id: String) -> Result<u32, RedisHan
     Ok(deleted_count)
 }
 
+#[instrument(err)]
 pub async fn validate_refresh_token(jti: String) -> Result<bool, RedisHandlerError> {
     match get_refresh_token(jti).await? {
         Some(token_data) => Ok(!token_data.is_expired()),
@@ -222,6 +230,7 @@ pub async fn validate_refresh_token(jti: String) -> Result<bool, RedisHandlerErr
     }
 }
 
+#[instrument(err)]
 pub async fn cleanup_expired_tokens() -> Result<u32, RedisHandlerError> {
     let pool = get_redis_pool()?;
     let mut conn = pool.get().await?;
@@ -270,6 +279,7 @@ pub async fn cleanup_expired_tokens() -> Result<u32, RedisHandlerError> {
     Ok(cleaned)
 }
 
+#[instrument(err)]
 pub async fn check_rate_limit(
     identifier: String,
     max_requests: u32,
@@ -334,6 +344,7 @@ pub async fn check_rate_limit(
     Ok((true, remaining_seconds, remaining_requests))
 }
 
+#[instrument(err)]
 pub async fn reset_rate_limit(identifier: String) -> Result<bool, RedisHandlerError> {
     let pool = get_redis_pool()?;
     let mut conn = pool.get().await?;
@@ -344,6 +355,7 @@ pub async fn reset_rate_limit(identifier: String) -> Result<bool, RedisHandlerEr
     Ok(deleted > 0)
 }
 
+#[instrument(err)]
 pub async fn get_rate_limit_stats(identifier: String) -> Result<(u32, u32), RedisHandlerError> {
     let pool = get_redis_pool()?;
     let mut conn = pool.get().await?;
@@ -361,6 +373,7 @@ pub async fn get_rate_limit_stats(identifier: String) -> Result<(u32, u32), Redi
     Ok((current_count as u32, remaining_seconds))
 }
 
+#[instrument(err)]
 pub async fn health_check() -> Result<bool, RedisHandlerError> {
     let pool = get_redis_pool()?;
     let mut conn = pool.get().await?;
@@ -369,6 +382,7 @@ pub async fn health_check() -> Result<bool, RedisHandlerError> {
     Ok(pong == "PONG")
 }
 
+#[instrument(err)]
 pub async fn get_redis_info() -> Result<String, RedisHandlerError> {
     let pool = get_redis_pool()?;
     let mut conn = pool.get().await?;
@@ -377,6 +391,7 @@ pub async fn get_redis_info() -> Result<String, RedisHandlerError> {
     Ok(info)
 }
 
+#[instrument(err)]
 pub async fn flush_all() -> Result<bool, RedisHandlerError> {
     let pool = get_redis_pool()?;
     let mut conn = pool.get().await?;
@@ -385,6 +400,7 @@ pub async fn flush_all() -> Result<bool, RedisHandlerError> {
     Ok(result == "OK")
 }
 
+#[instrument(err)]
 pub async fn get_all_refresh_tokens() -> Result<Vec<RefreshTokenData>, RedisHandlerError> {
     let pool = get_redis_pool()?;
     let mut conn = pool.get().await?;
@@ -423,6 +439,7 @@ pub async fn get_all_refresh_tokens() -> Result<Vec<RefreshTokenData>, RedisHand
     Ok(tokens)
 }
 
+#[instrument(err)]
 pub async fn cleanup_rate_limit_keys() -> Result<u32, RedisHandlerError> {
     let pool = get_redis_pool()?;
     let mut conn = pool.get().await?;

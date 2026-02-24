@@ -3,6 +3,8 @@ use jwt_handler::{
     AccessTokenClaims, RefreshTokenClaims, gen_access_token, gen_refresh_token,
     rotate_refresh_token, verify_access_token, verify_refresh_token,
 };
+use logger::LogPayload;
+use napi::threadsafe_function::ThreadsafeFunction;
 use napi_derive::napi;
 use redis_handler::RefreshTokenData;
 use shared_types::User;
@@ -228,4 +230,26 @@ pub async fn uid_lookup(uid: String) -> napi::Result<User> {
     user_from_uid(&uid)
         .await
         .map_err(|e| napi::Error::from_reason(format!("Failed to lookup user from uid: {e}")))
+}
+
+#[napi]
+pub async fn init_logger(db_path: String, callback: Option<ThreadsafeFunction<LogPayload>>) {
+    logger::init_logger(db_path, callback).await
+}
+
+#[napi]
+pub async fn init_panic_logging() {
+    logger::init_panic_logging().await
+}
+
+#[napi]
+pub async fn get_logs(
+    db_path: String,
+    search_query: String,
+    levels: Option<Vec<String>>,
+    start_time: Option<String>,
+    end_time: Option<String>,
+    limit: u32,
+) -> napi::Result<String> {
+    logger::get_logs(db_path, search_query, levels, start_time, end_time, limit).await
 }

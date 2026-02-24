@@ -1,5 +1,6 @@
 import { trpc } from "@servs/client";
-import { Navbar } from "@components/index";
+import { Navbar, LogStreamViewer } from "@components/index";
+import "./AdminDashboard.css";
 
 export const AdminDashboard = () => {
   const cleanup = trpc.runCleanup.useMutation();
@@ -28,12 +29,9 @@ export const AdminDashboard = () => {
             </button>
           </section>
 
-          <section className="stat-card">
-            <h3>Security Policy</h3>
-            <p>
-              Active Perm Map: <code>users:manage</code> →{" "}
-              <code>create, edit, delete, search</code>
-            </p>
+          <section className="full-width-card">
+            <h3>Live System Logs</h3>
+            <LogStreamViewer />
           </section>
         </div>
       </main>

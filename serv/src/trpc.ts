@@ -1,13 +1,17 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import type { Request, Response } from "express";
 import { z } from "zod";
+import { on, EventEmitter } from "events";
 import * as Rapi from "./rlibs/index";
+import path from "path";
 
 const emailSchema = z.email().min(3).max(255);
 const passSchema = z.string().min(8);
 
 const ACCESS_TOKEN_MAX_AGE = 15 * 60 * 1000; // 15 minutes
 const REFRESH_TOKEN_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+export const logEmitter = new EventEmitter();
 
 export interface Ctx {
   token?: string;
@@ -502,6 +506,68 @@ export const appRouter = t.router({
         input.perms,
       );
     }),
+  getLogs: protectedProcedure.use(checkPerms("admin:access"))
+    .input(
+      z.object({
+        query: z.string().default(""),
+        levels: z.array(z.string()).optional(),
+        startTime: z.string().optional(),
+        endTime: z.string().optional(),
+        limit: z.number().default(100),
+      }),
+    )
+    .query(async ({ input }) => {
+      try {
+        const logDbPath = path.resolve(__dirname, "../../db/logs/logs.sqlite");
+        const logsJson = await Rapi.getLogs(
+          logDbPath,
+          input.query,
+          input.levels,
+          input.startTime,
+          input.endTime,
+          input.limit,
+        );
+        return JSON.parse(logsJson) as {
+          id: number;
+          timestamp: string;
+          level: string;
+          source: string;
+          message: string;
+        }[];
+      } catch (e) {
+        console.error("Log fetch failed:", e);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Log DB unreachable",
+        });
+      }
+    }),
+    logStream: protectedProcedure
+        .use(checkPerms("admin:access"))
+        .input(
+          z.object({
+            query: z.string().default(""),
+            levels: z.array(z.string()).optional(),
+          })
+        )
+        .subscription(async function* ({ input, signal }) {
+          const iterator = on(logEmitter, "new_log", { signal });
+
+	  const searchTerms = input.query.toLowerCase().split(" ").filter(t => t.length > 0);
+    
+          for await (const [log] of iterator) {
+	    // Level check
+	    if (input.levels?.length && !input.levels.includes(log.level)) continue;
+
+      	    if (searchTerms.length > 0) {
+      	      const msg = log.message.toLowerCase();
+      	      const matches = searchTerms.every(term => msg.includes(term));
+      	      if (!matches) continue;
+      	    }
+    
+            yield log;
+          }
+        }),
 });
 
 export type AppRouter = typeof appRouter;

@@ -16,6 +16,12 @@ export interface RefreshTokenClaims {
   tokenType: string
   jti: string
 }
+export interface LogPayload {
+  level: string
+  source: string
+  message: string
+  metadata: string
+}
 export declare function checkAccessJwt(token: string): Promise<AccessTokenClaims>
 
 export declare function checkPass(email: string, pass: string): Promise<boolean>
@@ -44,6 +50,8 @@ export declare function genRefreshJwt(uid: string, email: string): Promise<[stri
 
 export declare function getAllRefreshTokens(): Promise<Array<RefreshTokenData>>
 
+export declare function getLogs(dbPath: string, searchQuery: string, levels: Array<string> | undefined | null, startTime: string | undefined | null, endTime: string | undefined | null, limit: number): Promise<string>
+
 export declare function getRateLimitStats(identifier: string): Promise<[number, number]>
 
 export declare function getRedisInfo(): Promise<string>
@@ -51,6 +59,10 @@ export declare function getRedisInfo(): Promise<string>
 export declare function getRefreshToken(jti: string): Promise<RefreshTokenData | null>
 
 export declare function initDbs(): Promise<void>
+
+export declare function initLogger(dbPath: string, callback?: (((err: Error | null, arg: LogPayload) => any)) | undefined | null): Promise<void>
+
+export declare function initPanicLogging(): Promise<void>
 
 export declare function initRedis(): Promise<void>
 

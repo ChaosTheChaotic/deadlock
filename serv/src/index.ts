@@ -1,15 +1,16 @@
 import express from "express";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { appRouter, Ctx } from "./trpc";
+import { appRouter, Ctx, logEmitter } from "./trpc";
 import oauthRouter from "./oauth";
 import path from "path";
-import { initDbs, initRedis, uidLookup } from "./rlibs";
+import { initDbs, initPanicLogging, initRedis, uidLookup } from "./rlibs";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import {
   cleanupExpiredTokens,
   cleanupRateLimitKeys,
   checkAccessJwt,
+  initLogger,
 } from "./rlibs/index";
 
 const app = express();
@@ -96,6 +97,15 @@ async function initializeScheduledCleanups() {
 }
 
 async function initializeServer() {
+  const logDbPath = path.resolve(__dirname, "../../db/logs/logs.sqlite");
+  await initLogger(logDbPath, (err, payload) => {
+    if (err) {
+      console.error("Logger callback error:", err);
+      return;
+    }
+    logEmitter.emit("new_log", payload);
+  });
+  await initPanicLogging();
   try {
     console.log("Initializing database pools...");
     await initDbs();

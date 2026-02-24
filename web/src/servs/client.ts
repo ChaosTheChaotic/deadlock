@@ -1,5 +1,5 @@
 import { createTRPCReact } from "@trpc/react-query";
-import { httpBatchLink } from "@trpc/client";
+import { httpBatchLink, httpSubscriptionLink, splitLink } from "@trpc/client";
 import type { AppRouter } from "@serv/trpc";
 import { QueryClient } from "@tanstack/react-query";
 
@@ -15,17 +15,28 @@ export const qc = new QueryClient({
 
 export const trpcClient = trpc.createClient({
   links: [
-    httpBatchLink({
-      url: "/trpc",
-      headers() {
-        return {};
+    splitLink({
+      condition(op) {
+        return op.type === "subscription"
       },
-      fetch(url, options) {
-        return fetch(url, {
-          ...options,
-          credentials: "include", // Important: send cookies
-        });
-      },
+      true: httpSubscriptionLink({
+        url: "/trpc",
+        eventSourceOptions: {
+          withCredentials: true,
+        },
+      }),
+      false: httpBatchLink({
+        url: "/trpc",
+        headers() {
+          return {};
+        },
+        fetch(url, options) {
+          return fetch(url, {
+            ...options,
+            credentials: "include",
+          });
+        },
+      }),
     }),
   ],
 });
