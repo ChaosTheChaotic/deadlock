@@ -581,7 +581,9 @@ export const appRouter = t.router({
       }),
     )
     .subscription(async function* ({ input, signal }) {
-      const iterator = on(logEmitter, "new_log", { signal });
+      const iterator = on(logEmitter, "new_log", {
+        signal,
+      }) as AsyncIterableIterator<[Rapi.LogEntry]>;
 
       const searchTerms = input.query
         .toLowerCase()

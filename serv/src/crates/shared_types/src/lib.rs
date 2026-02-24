@@ -39,4 +39,4 @@ pub struct LogEntry {
     pub level: String,
     pub source: String,
     pub message: String,
-} 
+}

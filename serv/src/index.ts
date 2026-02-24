@@ -132,8 +132,13 @@ async function initializeServer() {
   }
 }
 
-app.use((err: any, req: express.Request, res: express.Response) => {
-  writeLog("error", `Express Unhandled Error at ${req.path}: ${err.message}`);
+app.use((err: unknown, req: express.Request, res: express.Response) => {
+  const errorMessage = err instanceof Error ? err.message : String(err);
+
+  writeLog(
+    "error",
+    `Express Unhandled Error at ${req.path}: ${errorMessage}`,
+  ).catch((logErr) => console.error("Failed to write to log DB:", logErr));
 
   res.status(500).json({ error: "Internal Server Error" });
 });

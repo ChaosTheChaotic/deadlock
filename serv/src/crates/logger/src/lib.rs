@@ -1,12 +1,12 @@
+use napi::threadsafe_function::ThreadsafeFunction;
+use napi_derive::napi;
 use rusqlite::Connection;
 use serde_json::json;
+use shared_types::LogEntry;
 use std::sync::mpsc;
 use std::{path::Path, sync::Once, thread};
 use tracing::Subscriber;
 use tracing_subscriber::{Layer, layer::SubscriberExt, util::SubscriberInitExt};
-use napi::threadsafe_function::ThreadsafeFunction;
-use napi_derive::napi;
-use shared_types::LogEntry;
 
 static INIT_LOGGING: Once = Once::new();
 
@@ -61,12 +61,18 @@ impl<S: Subscriber> Layer<S> for SqliteLayer {
 
         let _ = self.sender.send(payload.clone());
         if let Some(node_callback) = &self.callback {
-            node_callback.call(Ok(payload), napi::threadsafe_function::ThreadsafeFunctionCallMode::NonBlocking);
+            node_callback.call(
+                Ok(payload),
+                napi::threadsafe_function::ThreadsafeFunctionCallMode::NonBlocking,
+            );
         }
     }
 }
 
-pub async fn init_logger(db_path: impl AsRef<Path>, callback: Option<ThreadsafeFunction<LogPayload>>) {
+pub async fn init_logger(
+    db_path: impl AsRef<Path>,
+    callback: Option<ThreadsafeFunction<LogPayload>>,
+) {
     INIT_LOGGING.call_once(|| {
         let (tx, rx) = mpsc::channel::<LogPayload>();
         let conn = Connection::open(&db_path).expect("Could not create/open log DB");
@@ -124,7 +130,10 @@ pub async fn init_logger(db_path: impl AsRef<Path>, callback: Option<ThreadsafeF
             }
         });
 
-        let layer = SqliteLayer { sender: tx, callback };
+        let layer = SqliteLayer {
+            sender: tx,
+            callback,
+        };
         tracing_subscriber::registry()
             .with(layer)
             .with(
