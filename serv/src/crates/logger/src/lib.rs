@@ -247,3 +247,14 @@ pub async fn get_logs(
 
     Ok(rows.filter_map(|r| r.ok()).collect())
 }
+
+pub async fn write_log(level: String, message: String) {
+    match level.to_lowercase().as_str() {
+        "error" => tracing::error!(target: "nodejs", "{}", message),
+        "warn" => tracing::warn!(target: "nodejs", "{}", message),
+        "info" => tracing::info!(target: "nodejs", "{}", message),
+        "debug" => tracing::debug!(target: "nodejs", "{}", message),
+        "trace" => tracing::trace!(target: "nodejs", "{}", message),
+        _ => tracing::info!(target: "nodejs", "{}", message),
+    }
+}

@@ -81,6 +81,8 @@ export declare function uidLookup(uid: string): Promise<User>
 export declare function updateUser(uid: string, email?: string | undefined | null, pass?: string | undefined | null, oauthProvider?: string | undefined | null, oauthProviderId?: string | undefined | null, roles?: Array<string> | undefined | null, perms?: Array<string> | undefined | null): Promise<User>
 
 export declare function validateRefreshToken(jti: string): Promise<boolean>
+
+export declare function writeLog(level: string, message: string): Promise<void>
 export interface RateLimitConfig {
   maxRequests: number
   windowSeconds: number

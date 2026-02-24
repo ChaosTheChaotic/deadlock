@@ -17,7 +17,7 @@ export const trpcClient = trpc.createClient({
   links: [
     splitLink({
       condition(op) {
-        return op.type === "subscription"
+        return op.type === "subscription";
       },
       true: httpSubscriptionLink({
         url: "/trpc",

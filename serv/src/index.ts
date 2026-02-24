@@ -3,7 +3,13 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter, Ctx, logEmitter } from "./trpc";
 import oauthRouter from "./oauth";
 import path from "path";
-import { initDbs, initPanicLogging, initRedis, uidLookup } from "./rlibs";
+import {
+  initDbs,
+  initPanicLogging,
+  initRedis,
+  uidLookup,
+  writeLog,
+} from "./rlibs";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import {
@@ -126,4 +132,9 @@ async function initializeServer() {
   }
 }
 
+app.use((err: any, req: express.Request, res: express.Response) => {
+  writeLog("error", `Express Unhandled Error at ${req.path}: ${err.message}`);
+
+  res.status(500).json({ error: "Internal Server Error" });
+});
 void initializeServer();

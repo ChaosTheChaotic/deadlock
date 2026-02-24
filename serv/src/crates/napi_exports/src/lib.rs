@@ -253,3 +253,8 @@ pub async fn get_logs(
 ) -> napi::Result<Vec<LogEntry>> {
     logger::get_logs(db_path, search_query, levels, start_time, end_time, limit).await
 }
+
+#[napi]
+pub async fn write_log(level: String, message: String) {
+    logger::write_log(level, message).await
+}

@@ -1,26 +1,28 @@
 import { trpc } from "@servs/client";
 import { useState } from "react";
-import type { LogEntry } from "@serv/rlibs"
+import type { LogEntry } from "@serv/rlibs";
 
 export const LogStreamViewer = () => {
-  const [logs, setLogs] = useState<any[]>([]);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [search, setSearch] = useState("");
   const [levels, setLevels] = useState<string[]>([]);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [isPaused, setIsPaused] = useState(false);
   const [limit] = useState(150);
-  const [prevHistory, setPrevHistory] = useState<LogEntry[] | undefined>(undefined);
+  const [prevHistory, setPrevHistory] = useState<LogEntry[] | undefined>(
+    undefined,
+  );
 
   trpc.logStream.useSubscription(
-      { query: search, levels: levels.length ? levels : undefined },
-      {
-        onData(newLog) {
-          if (isPaused) return;
-          setLogs((prev) => [newLog, ...prev].slice(0, limit));
-        },
-      }
-    );
+    { query: search, levels: levels.length ? levels : undefined },
+    {
+      onData(newLog) {
+        if (isPaused) return;
+        setLogs((prev) => [newLog, ...prev].slice(0, limit));
+      },
+    },
+  );
 
   const toggleLevel = (level: string) => {
     setLevels((prev) =>
@@ -30,10 +32,10 @@ export const LogStreamViewer = () => {
 
   const { data: history } = trpc.getLogs.useQuery(
     { limit, query: search, levels },
-    { 
-      refetchInterval: false, 
-      staleTime: Infinity 
-    }
+    {
+      refetchInterval: false,
+      staleTime: Infinity,
+    },
   );
 
   if (history && history !== prevHistory) {
@@ -91,31 +93,31 @@ export const LogStreamViewer = () => {
       </div>
 
       <div className="terminal-window">
-          <table className="terminal-table">
-            <thead>
-              <tr>
-                <th>TIMESTAMP</th>
-                <th>LEVEL</th>
-                <th>SOURCE</th>
-                <th>MESSAGE</th>
+        <table className="terminal-table">
+          <thead>
+            <tr>
+              <th>TIMESTAMP</th>
+              <th>LEVEL</th>
+              <th>SOURCE</th>
+              <th>MESSAGE</th>
+            </tr>
+          </thead>
+          <tbody>
+            {logs?.map((log) => (
+              <tr
+                key={log.id}
+                className={`log-row lvl-${log.level.toLowerCase()}`}
+              >
+                <td className="col-time">{log.timestamp}</td>
+                <td className="col-lvl">
+                  <span className="lvl-badge">{log.level}</span>
+                </td>
+                <td className="col-src">{log.source}</td>
+                <td className="col-msg">{log.message}</td>
               </tr>
-            </thead>
-            <tbody>
-              {logs?.map((log) => (
-                <tr
-                  key={log.id}
-                  className={`log-row lvl-${log.level.toLowerCase()}`}
-                >
-                  <td className="col-time">{log.timestamp}</td>
-                  <td className="col-lvl">
-                    <span className="lvl-badge">{log.level}</span>
-                  </td>
-                  <td className="col-src">{log.source}</td>
-                  <td className="col-msg">{log.message}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            ))}
+          </tbody>
+        </table>
       </div>
     </section>
   );

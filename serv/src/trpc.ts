@@ -160,6 +160,38 @@ const createRateLimitMiddleware = (config: {
   });
 };
 
+const errorLoggingMiddleware = t.middleware(
+  async ({ ctx, path, type, next }) => {
+    // Execute the procedure and wait for the result
+    const result = await next();
+
+    // Check if the procedure resulted in an error
+    if (!result.ok) {
+      const error = result.error;
+
+      const userStr = ctx?.user
+        ? `[User: ${ctx.user.email}]`
+        : "[Unauthenticated]";
+
+      const logMsg = `tRPC ${type} '${path}' failed ${userStr}: ${error.message}`;
+
+      try {
+        if (error.code === "INTERNAL_SERVER_ERROR") {
+          await Rapi.writeLog("error", logMsg);
+          console.error(error);
+        } else {
+          await Rapi.writeLog("warn", logMsg);
+        }
+      } catch (error) {
+        console.error("Critical: Logging utility failed:", error);
+      }
+    }
+
+    // Return the original result (error or success) to the client
+    return result;
+  },
+);
+
 // Create specific rate limit configurations
 export const rateLimitMiddleware = {
   // For authenticated users: 100 requests per 15 minutes
@@ -191,8 +223,12 @@ export const rateLimitMiddleware = {
   }) => createRateLimitMiddleware(config),
 };
 
+export const baseProcedure: typeof t.procedure = t.procedure.use(
+  errorLoggingMiddleware,
+);
+
 export const protectedProcedure: typeof t.procedure =
-  t.procedure.use(authMiddleware);
+  baseProcedure.use(authMiddleware);
 
 export const rateLimitedProcedure: typeof t.procedure = protectedProcedure.use(
   rateLimitMiddleware.authenticated,
@@ -242,7 +278,7 @@ export const appRouter = t.router({
     .mutation(async ({ input }) => {
       return await Rapi.deleteUser(input.email);
     }),
-  login: t.procedure
+  login: baseProcedure
     .use(rateLimitMiddleware.authEndpoint)
     .input(z.object({ email: emailSchema, pass: passSchema }))
     .mutation(async ({ input, ctx }) => {
@@ -279,7 +315,7 @@ export const appRouter = t.router({
       return { user: usr };
     }),
 
-  register: t.procedure
+  register: baseProcedure
     .use(rateLimitMiddleware.authEndpoint)
     .input(
       z.object({
@@ -334,7 +370,7 @@ export const appRouter = t.router({
       return { user };
     }),
 
-  refresh: t.procedure
+  refresh: baseProcedure
     .use(rateLimitMiddleware.unauthenticated)
     .mutation(async ({ ctx }) => {
       const refreshToken = ctx.refreshToken;
@@ -403,7 +439,7 @@ export const appRouter = t.router({
       }
     }),
 
-  logout: t.procedure
+  logout: baseProcedure
     .input(z.object({ jti: z.string().optional() }).optional())
     .mutation(async ({ ctx, input }) => {
       const refreshToken = ctx.refreshToken;
@@ -506,7 +542,8 @@ export const appRouter = t.router({
         input.perms,
       );
     }),
-  getLogs: protectedProcedure.use(checkPerms("admin:access"))
+  getLogs: protectedProcedure
+    .use(checkPerms("admin:access"))
     .input(
       z.object({
         query: z.string().default(""),
@@ -535,36 +572,39 @@ export const appRouter = t.router({
         });
       }
     }),
-    logStream: protectedProcedure
-        .use(checkPerms("admin:access"))
-        .input(
-          z.object({
-            query: z.string().default(""),
-            levels: z.array(z.string()).optional(),
-          })
-        )
-        .subscription(async function* ({ input, signal }) {
-          const iterator = on(logEmitter, "new_log", { signal });
+  logStream: protectedProcedure
+    .use(checkPerms("admin:access"))
+    .input(
+      z.object({
+        query: z.string().default(""),
+        levels: z.array(z.string()).optional(),
+      }),
+    )
+    .subscription(async function* ({ input, signal }) {
+      const iterator = on(logEmitter, "new_log", { signal });
 
-	  const searchTerms = input.query.toLowerCase().split(" ").filter(t => t.length > 0);
-    
-          for await (const [log] of iterator) {
-	    if (!log || typeof log !== 'object' || !log.level) {
-	      console.error("Invalid log object found when emitting logs");
-      	      continue; 
-      	    }
-	    // Level check
-	    if (input.levels?.length && !input.levels.includes(log.level)) continue;
+      const searchTerms = input.query
+        .toLowerCase()
+        .split(" ")
+        .filter((t) => t.length > 0);
 
-      	    if (searchTerms.length > 0) {
-      	      const msg = log.message.toLowerCase();
-      	      const matches = searchTerms.every(term => msg.includes(term));
-      	      if (!matches) continue;
-      	    }
-    
-            yield log;
-          }
-        }),
+      for await (const [log] of iterator) {
+        if (!log || typeof log !== "object" || !log.level) {
+          console.error("Invalid log object found when emitting logs");
+          continue;
+        }
+        // Level check
+        if (input.levels?.length && !input.levels.includes(log.level)) continue;
+
+        if (searchTerms.length > 0) {
+          const msg = log.message.toLowerCase();
+          const matches = searchTerms.every((term) => msg.includes(term));
+          if (!matches) continue;
+        }
+
+        yield log;
+      }
+    }),
 });
 
 export type AppRouter = typeof appRouter;
