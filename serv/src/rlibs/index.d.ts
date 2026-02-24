@@ -50,7 +50,7 @@ export declare function genRefreshJwt(uid: string, email: string): Promise<[stri
 
 export declare function getAllRefreshTokens(): Promise<Array<RefreshTokenData>>
 
-export declare function getLogs(dbPath: string, searchQuery: string, levels: Array<string> | undefined | null, startTime: string | undefined | null, endTime: string | undefined | null, limit: number): Promise<string>
+export declare function getLogs(dbPath: string, searchQuery: string, levels: Array<string> | undefined | null, startTime: string | undefined | null, endTime: string | undefined | null, limit: number): Promise<Array<LogEntry>>
 
 export declare function getRateLimitStats(identifier: string): Promise<[number, number]>
 
@@ -94,6 +94,14 @@ export interface RefreshTokenData {
   expiresAt: number
   createdAt: number
 }
+export interface LogEntry {
+  id: number
+  timestamp: string
+  level: string
+  source: string
+  message: string
+}
+
 export interface User {
   uid: string
   email: string

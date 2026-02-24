@@ -1,5 +1,6 @@
 import { trpc } from "@servs/client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import type { LogEntry } from "@serv/rlibs"
 
 export const LogStreamViewer = () => {
   const [logs, setLogs] = useState<any[]>([]);
@@ -9,6 +10,7 @@ export const LogStreamViewer = () => {
   const [endTime, setEndTime] = useState("");
   const [isPaused, setIsPaused] = useState(false);
   const [limit] = useState(150);
+  const [prevHistory, setPrevHistory] = useState<LogEntry[] | undefined>(undefined);
 
   trpc.logStream.useSubscription(
       { query: search, levels: levels.length ? levels : undefined },
@@ -34,9 +36,10 @@ export const LogStreamViewer = () => {
     }
   );
 
-  useEffect(() => {
-    if (history) setLogs(history);
-  }, [history]);
+  if (history && history !== prevHistory) {
+    setPrevHistory(history);
+    setLogs(history);
+  }
 
   return (
     <section className="log-viewer-dark">

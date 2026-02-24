@@ -7,7 +7,7 @@ use logger::LogPayload;
 use napi::threadsafe_function::ThreadsafeFunction;
 use napi_derive::napi;
 use redis_handler::RefreshTokenData;
-use shared_types::User;
+use shared_types::{LogEntry, User};
 use user_handler::{
     add_user, delete_user as internal_delete_users, search_users as internal_search_users,
     update_user as internal_update_user, user_from_uid, validate_pass,
@@ -250,6 +250,6 @@ pub async fn get_logs(
     start_time: Option<String>,
     end_time: Option<String>,
     limit: u32,
-) -> napi::Result<String> {
+) -> napi::Result<Vec<LogEntry>> {
     logger::get_logs(db_path, search_query, levels, start_time, end_time, limit).await
 }

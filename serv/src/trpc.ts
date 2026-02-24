@@ -519,7 +519,7 @@ export const appRouter = t.router({
     .query(async ({ input }) => {
       try {
         const logDbPath = path.resolve(__dirname, "../../db/logs/logs.sqlite");
-        const logsJson = await Rapi.getLogs(
+        return await Rapi.getLogs(
           logDbPath,
           input.query,
           input.levels,
@@ -527,13 +527,6 @@ export const appRouter = t.router({
           input.endTime,
           input.limit,
         );
-        return JSON.parse(logsJson) as {
-          id: number;
-          timestamp: string;
-          level: string;
-          source: string;
-          message: string;
-        }[];
       } catch (e) {
         console.error("Log fetch failed:", e);
         throw new TRPCError({
@@ -556,6 +549,10 @@ export const appRouter = t.router({
 	  const searchTerms = input.query.toLowerCase().split(" ").filter(t => t.length > 0);
     
           for await (const [log] of iterator) {
+	    if (!log || typeof log !== 'object' || !log.level) {
+	      console.error("Invalid log object found when emitting logs");
+      	      continue; 
+      	    }
 	    // Level check
 	    if (input.levels?.length && !input.levels.includes(log.level)) continue;
 

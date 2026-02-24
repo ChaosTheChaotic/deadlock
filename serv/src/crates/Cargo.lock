@@ -861,6 +861,7 @@ dependencies = [
  "napi-derive",
  "rusqlite",
  "serde_json",
+ "shared_types",
  "tracing",
  "tracing-subscriber",
 ]

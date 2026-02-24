@@ -88,6 +88,9 @@ else
   echo "The authorized redirect URIs should be set to \"{projects domain}/auth/google/callback\" for this to work"
 fi
 
+# Create log folder for sqlite logs
+mkdir -p $PR/db/logs
+
 # Build everything and run
 cd $PR/web
 pnpm build && echo "Sucessfully built the web" || fatal "Failed to build web"

@@ -6,6 +6,7 @@ use tracing::Subscriber;
 use tracing_subscriber::{Layer, layer::SubscriberExt, util::SubscriberInitExt};
 use napi::threadsafe_function::ThreadsafeFunction;
 use napi_derive::napi;
+use shared_types::LogEntry;
 
 static INIT_LOGGING: Once = Once::new();
 
@@ -165,7 +166,7 @@ pub async fn get_logs(
     start_time: Option<String>,
     end_time: Option<String>,
     limit: u32,
-) -> napi::Result<String> {
+) -> napi::Result<Vec<LogEntry>> {
     let conn = Connection::open(&db_path)
         .map_err(|e| napi::Error::from_reason(format!("DB Open Error: {}", e)))?;
 
@@ -234,17 +235,15 @@ pub async fn get_logs(
 
     let rows = stmt
         .query_map(rusqlite::params_from_iter(all_params), |row| {
-            Ok(json!({
-                "id": row.get::<_, i64>(0)?,
-                "timestamp": row.get::<_, String>(1)?,
-                "level": row.get::<_, String>(2)?,
-                "source": row.get::<_, String>(3)?,
-                "message": row.get::<_, String>(4)?,
-            }))
+            Ok(LogEntry {
+                id: row.get::<_, i64>(0)?,
+                timestamp: row.get::<_, String>(1)?,
+                level: row.get::<_, String>(2)?,
+                source: row.get::<_, String>(3)?,
+                message: row.get::<_, String>(4)?,
+            })
         })
         .map_err(|e| napi::Error::from_reason(format!("Query Execution Error: {}", e)))?;
 
-    let results: Vec<_> = rows.filter_map(|r| r.ok()).collect();
-    serde_json::to_string(&results)
-        .map_err(|e| napi::Error::from_reason(format!("JSON Serialization Error: {}", e)))
+    Ok(rows.filter_map(|r| r.ok()).collect())
 }

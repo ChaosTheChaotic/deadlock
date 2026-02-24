@@ -31,3 +31,12 @@ pub struct AuthContext {
     pub uid: String,
     pub email: String,
 }
+
+#[napi(object)]
+pub struct LogEntry {
+    pub id: i64,
+    pub timestamp: String,
+    pub level: String,
+    pub source: String,
+    pub message: String,
+} 
