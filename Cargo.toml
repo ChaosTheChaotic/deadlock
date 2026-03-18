@@ -1,0 +1,12 @@
+[package]
+name = "hash_pass"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "hash_pass"
+path = "hash_pass.rs"
+
+[dependencies]
+argon2 = "0.5"
+rand = "0.8"
