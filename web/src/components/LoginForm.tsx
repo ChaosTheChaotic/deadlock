@@ -44,12 +44,6 @@ export function LoginForm() {
     if (urlError || urlSuccess) {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-
-    if (urlSuccess) {
-      setTimeout(() => {
-        window.location.href = "/";
-      }, 2000);
-    }
   }, [urlError, urlSuccess]);
 
   const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {

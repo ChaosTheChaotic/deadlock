@@ -186,7 +186,13 @@ router.get("/auth/google/callback", async (req, res) => {
       ) {
         user = existingUser;
       } else if (!existingUser.oauthProvider && !existingUser.oauthProviderId) {
-        user = await Rapi.updateUser(email, undefined, "google", googleId);
+        user = await Rapi.updateUser(
+          existingUser.uid,
+          undefined,
+          undefined,
+          "google",
+          googleId,
+        );
         console.log(`Linked Google account to existing user: ${email}`);
       } else {
         throw new Error(
@@ -263,8 +269,7 @@ router.get("/auth/status", async (req, res) => {
   }
 
   try {
-    const claimsJson = await Rapi.checkAccessJwt(token);
-    const claims = JSON.parse(claimsJson) as Rapi.RefreshTokenClaims;
+    const claims = await Rapi.checkAccessJwt(token);
     res.json({ authenticated: true, user: claims });
   } catch {
     res.json({ authenticated: false });

@@ -10,6 +10,8 @@ export interface AuthContextType {
   register: (email: string, password?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<void>;
+  hasRole: (role: string) => boolean;
+  hasPerm: (perm: string) => boolean;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -135,6 +137,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(interval);
   }, [user, logout, refreshSession]);
 
+  const hasRole = useCallback(
+    (role: string) => {
+      return !!user?.roles?.includes(role);
+    },
+    [user],
+  );
+
+  const hasPerm = useCallback(
+    (perm: string) => {
+      return !!user?.perms?.includes(perm);
+    },
+    [user],
+  );
+
   return (
     <AuthContext.Provider
       value={{
@@ -145,6 +161,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         register,
         logout,
         refreshSession,
+        hasRole,
+        hasPerm,
       }}
     >
       {children}

@@ -13,41 +13,100 @@ pub fn user_from_row(row: Row) -> User {
         oauth_provider: row.get("oauth_provider"),
         oauth_provider_id: row.get("oauth_provider_id"),
         create_time: row.get::<_, f64>("creation_time"),
+        roles: row.get("roles"),
+        perms: row.get("perms"),
     }
 }
 
-pub async fn search_users(email_str: String) -> napi::Result<Vec<User>> {
+pub async fn user_from_uid(uid: impl AsRef<str>) -> napi::Result<User> {
+    let uid = uid.as_ref(); // I dont want trait bound generic hell
     let client = get_uidb_pool()
         .get()
         .await
-        .map_err(|e| napi::Error::from_reason(format!("Failed to get client from pool: {e}")))?;
+        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
 
-    // Use parameterized query to prevent SQL injection
+    let stmt = client
+        .prepare_cached(
+            "SELECT
+            u.uid::text as uid,
+            u.email,
+            u.password_hash,
+            u.oauth_provider,
+            u.oauth_provider_id,
+            date_part('epoch', u.creation_time) as creation_time,
+            ARRAY(
+                SELECT r.role_name
+                FROM public.Roles r
+                JOIN public.User_Roles ur ON r.role_id = ur.role_id
+                WHERE ur.user_uid = u.uid
+            ) as roles,
+            ARRAY(
+                SELECT DISTINCT p.perm 
+                FROM public.Perms p
+                LEFT JOIN public.Role_Perms rp ON p.perm_id = rp.perm_id
+                LEFT JOIN public.User_Roles ur ON rp.role_id = ur.role_id
+                LEFT JOIN public.User_Perms up ON p.perm_id = up.perm_id
+                WHERE ur.user_uid = u.uid OR up.user_uid = u.uid
+            ) as perms
+            FROM public.Users u 
+            WHERE u.uid::text ILIKE $1",
+        )
+        .await
+        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
+
+    let rows = client
+        .query(&stmt, &[&uid])
+        .await
+        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
+    rows.into_iter()
+        .map(user_from_row)
+        .next()
+        .ok_or(napi::Error::from_reason("No users returned"))
+}
+
+pub async fn search_users(email_str: impl AsRef<str>) -> napi::Result<Vec<User>> {
+    let email_str = email_str.as_ref();
+    let client = get_uidb_pool()
+        .get()
+        .await
+        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
+
     let stmt = client
         .prepare_cached(
             "SELECT 
-                uid::text as uid, 
-                email, 
-                password_hash, 
-                oauth_provider, 
-                oauth_provider_id,
-                date_part('epoch', creation_time) as creation_time
-             FROM users 
-             WHERE email ILIKE $1",
+                u.uid::text as uid, 
+                u.email, 
+                u.password_hash, 
+                u.oauth_provider, 
+                u.oauth_provider_id,
+                date_part('epoch', u.creation_time) as creation_time,
+                -- Handle roles
+                ARRAY(
+                    SELECT r.role_name 
+                    FROM public.Roles r
+                    JOIN public.User_Roles ur ON r.role_id = ur.role_id
+                    WHERE ur.user_uid = u.uid
+                ) as roles,
+                -- Handle permissions
+                ARRAY(
+                    SELECT DISTINCT p.perm 
+                    FROM public.Perms p
+                    LEFT JOIN public.Role_Perms rp ON p.perm_id = rp.perm_id
+                    LEFT JOIN public.User_Roles ur ON rp.role_id = ur.role_id
+                    LEFT JOIN public.User_Perms up ON p.perm_id = up.perm_id
+                    WHERE ur.user_uid = u.uid OR up.user_uid = u.uid
+                ) as perms
+             FROM public.Users u 
+             WHERE u.email ILIKE $1",
         )
         .await
-        .map_err(|e| napi::Error::from_reason(format!("Failed to prepare cached: {e}")))?;
+        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
 
-    // Execute query with parameter
     let rows = client
         .query(&stmt, &[&format!("%{}%", email_str)])
         .await
-        .map_err(|e| napi::Error::from_reason(format!("Failed to execute query: {e}")))?;
-
-    // Map rows to User structs
-    let users: Vec<User> = rows.into_iter().map(user_from_row).collect();
-
-    Ok(users)
+        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
+    Ok(rows.into_iter().map(user_from_row).collect())
 }
 
 pub async fn add_user(
@@ -55,112 +114,115 @@ pub async fn add_user(
     pass: Option<String>,
     oauth_provider: Option<String>,
     oauth_provider_id: Option<String>,
+    roles: Option<Vec<String>>,
+    perms: Option<Vec<String>>,
 ) -> napi::Result<User> {
-    let client = get_uidb_pool()
+    let mut client = get_uidb_pool()
         .get()
         .await
-        .map_err(|e| napi::Error::from_reason(format!("Failed to get client from pool: {e}")))?;
+        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
 
-    // Check if user already exists by email or OAuth
-    if let (Some(provider), Some(provider_id)) = (&oauth_provider, &oauth_provider_id) {
-        let check_oauth_stmt = client
-            .prepare_cached(
-                "SELECT uid::text as uid, email, password_hash, oauth_provider, oauth_provider_id,
-                        date_part('epoch', creation_time) as creation_time
-                 FROM users 
-                 WHERE oauth_provider = $1 AND oauth_provider_id = $2",
-            )
-            .await
-            .map_err(|e| napi::Error::from_reason(format!("Failed to prepare cached: {e}")))?;
+    // Start transaction so if role assignment fails, the user wont be created.
+    let tx = client
+        .transaction()
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Transaction error: {e}")))?;
 
-        if let Ok(Some(row)) = client
-            .query_opt(&check_oauth_stmt, &[provider, provider_id])
-            .await
-        {
-            return Ok(user_from_row(row));
-        }
-    }
-
-    // Check by email
-    let check_email_stmt = client
+    // Check if user already exists
+    let existing_stmt = tx
         .prepare_cached(
-            "SELECT uid::text as uid, email, password_hash, oauth_provider, oauth_provider_id,
-                    date_part('epoch', creation_time) as creation_time
-             FROM users 
-             WHERE email = $1",
+            "SELECT uid::text FROM public.Users 
+         WHERE (oauth_provider = $1 AND oauth_provider_id = $2) OR email = $3",
         )
         .await
-        .map_err(|e| napi::Error::from_reason(format!("Failed to prepare cached: {e}")))?;
+        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
 
-    if let Ok(Some(row)) = client.query_opt(&check_email_stmt, &[&email]).await {
-        let existing_oauth_provider: Option<String> = row.get("oauth_provider");
-        let existing_oauth_provider_id: Option<String> = row.get("oauth_provider_id");
+    let existing_uid: Option<String> = tx
+        .query_opt(
+            &existing_stmt,
+            &[&oauth_provider, &oauth_provider_id, &email],
+        )
+        .await
+        .map_err(|e| napi::Error::from_reason(e.to_string()))?
+        .map(|row| row.get(0));
 
-        // If user exists without OAuth, link the OAuth account
-        if existing_oauth_provider.is_none()
-            && existing_oauth_provider_id.is_none()
-            && let (Some(provider), Some(provider_id)) = (&oauth_provider, &oauth_provider_id)
-        {
-            return update_user(
-                email,
-                None,
-                Some(provider.clone()),
-                Some(provider_id.clone()),
-            )
-            .await;
-        }
-        return Ok(user_from_row(row));
+    if let Some(uid) = existing_uid {
+        // If user exists, we perform an update
+        tx.rollback().await.ok();
+        return update_user(
+            uid,
+            Some(email),
+            pass,
+            oauth_provider,
+            oauth_provider_id,
+            roles,
+            perms,
+        )
+        .await;
     }
 
-    // Insert new user
-    if let (Some(provider), Some(provider_id)) = (&oauth_provider, &oauth_provider_id) {
-        // OAuth user
-        let stmt = client
-            .prepare_cached(
-                "INSERT INTO users (email, oauth_provider, oauth_provider_id) 
-                 VALUES ($1, $2, $3)
-                 RETURNING uid::text as uid, email, password_hash, oauth_provider, oauth_provider_id,
-                           date_part('epoch', creation_time) as creation_time",
-            )
-            .await
-            .map_err(|e| napi::Error::from_reason(format!("Failed to prepare cached: {e}")))?;
-
-        let row = client
-            .query_one(&stmt, &[&email, provider, provider_id])
-            .await
-            .map_err(|e| napi::Error::from_reason(format!("Failed to insert user: {e}")))?;
-
-        Ok(user_from_row(row))
-    } else if let Some(password) = pass {
-        // Password user
+    // Hash password
+    let pwd_hash = if let Some(p) = pass {
         let salt = SaltString::generate(&mut rand_core::OsRng);
-        let argon2 = Argon2::default();
-        let password_hash = argon2
-            .hash_password(password.as_bytes(), &salt)
-            .map_err(|e| napi::Error::from_reason(format!("Failed to hash password: {e}")))?
-            .to_string();
+        Some(
+            Argon2::default()
+                .hash_password(p.as_bytes(), &salt)
+                .map_err(|e| napi::Error::from_reason(format!("Hashing failed: {e}")))?
+                .to_string(),
+        )
+    } else {
+        None
+    };
 
-        let stmt = client
-            .prepare_cached(
-                "INSERT INTO users (email, password_hash) 
-                 VALUES ($1, $2)
-                 RETURNING uid::text as uid, email, password_hash, oauth_provider, oauth_provider_id,
-                           date_part('epoch', creation_time) as creation_time",
+    // Insert New User
+    let insert_stmt = tx
+        .prepare_cached(
+            "INSERT INTO public.Users (email, password_hash, oauth_provider, oauth_provider_id) 
+         VALUES ($1, $2, $3, $4) RETURNING uid::text",
+        )
+        .await
+        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
+
+    let row = tx
+        .query_one(
+            &insert_stmt,
+            &[&email, &pwd_hash, &oauth_provider, &oauth_provider_id],
+        )
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Insert failed: {e}")))?;
+
+    let new_uid: String = row.get(0);
+
+    // Handle Roles (default to "user" if none provided)
+    let target_roles = roles.unwrap_or_else(|| vec!["user".to_string()]);
+    for role_name in target_roles {
+        tx.execute(
+            "INSERT INTO public.User_Roles (user_uid, role_id) 
+             SELECT CAST($1 AS TEXT)::uuid, role_id FROM public.Roles WHERE role_name = $2",
+            &[&new_uid, &role_name],
+        )
+        .await
+        .ok();
+    }
+
+    // Handle direct permissions
+    if let Some(target_perms) = perms {
+        for perm_slug in target_perms {
+            tx.execute(
+                "INSERT INTO public.User_Perms (user_uid, perm_id) 
+                 SELECT CAST($1 AS TEXT)::uuid, perm_id FROM public.Perms WHERE perm = $2",
+                &[&new_uid, &perm_slug],
             )
             .await
-            .map_err(|e| napi::Error::from_reason(format!("Failed to prepare cached: {e}")))?;
-
-        let row = client
-            .query_one(&stmt, &[&email, &password_hash])
-            .await
-            .map_err(|e| napi::Error::from_reason(format!("Failed to insert user: {e}")))?;
-
-        Ok(user_from_row(row))
-    } else {
-        Err(napi::Error::from_reason(
-            "Either password or OAuth provider must be provided",
-        ))
+            .ok();
+        }
     }
+
+    tx.commit()
+        .await
+        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
+
+    user_from_uid(&new_uid).await
 }
 
 pub async fn validate_pass(email: String, pass: String) -> napi::Result<bool> {
@@ -243,28 +305,42 @@ pub async fn delete_user(email: String) -> napi::Result<User> {
 }
 
 pub async fn update_user(
-    email: String,
+    uid: String,
+    email: Option<String>,
     pass: Option<String>,
     oauth_provider: Option<String>,
     oauth_provider_id: Option<String>,
+    roles: Option<Vec<String>>,
+    perms: Option<Vec<String>>,
 ) -> napi::Result<User> {
-    let client = get_uidb_pool()
+    let mut client = get_uidb_pool()
         .get()
         .await
-        .map_err(|e| napi::Error::from_reason(format!("Failed to get client from pool: {e}")))?;
+        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
+
+    let tx = client
+        .transaction()
+        .await
+        .map_err(|e| napi::Error::from_reason(format!("Transaction error: {e}")))?;
 
     let mut updates = Vec::new();
     let mut params: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = Vec::new();
     let mut param_counter = 1;
-    let password_hash_owned: String;
 
-    if let Some(password) = &pass {
+    // Handle metadata updates
+    if let Some(e) = &email {
+        updates.push(format!("email = ${}", param_counter));
+        params.push(e);
+        param_counter += 1;
+    }
+
+    let password_hash_owned;
+    if let Some(p) = &pass {
         let salt = SaltString::generate(&mut rand_core::OsRng);
         password_hash_owned = Argon2::default()
-            .hash_password(password.as_bytes(), &salt)
+            .hash_password(p.as_bytes(), &salt)
             .map_err(|e| napi::Error::from_reason(format!("Hashing failed: {e}")))?
             .to_string();
-
         updates.push(format!("password_hash = ${}", param_counter));
         params.push(&password_hash_owned);
         param_counter += 1;
@@ -282,35 +358,62 @@ pub async fn update_user(
         param_counter += 1;
     }
 
-    if updates.is_empty() {
-        return Err(napi::Error::from_reason("No fields to update"));
+    if !updates.is_empty() {
+        params.push(&uid);
+        let query = format!(
+            "UPDATE public.Users SET {} WHERE uid = CAST(${} AS text)::uuid",
+            updates.join(", "),
+            param_counter
+        );
+        tx.execute(&query, &params)
+            .await
+            .map_err(|e| napi::Error::from_reason(format!("Metadata update failed: {e}")))?;
     }
 
-    params.push(&email);
-
-    let query = format!(
-        "UPDATE users 
-         SET {}
-         WHERE email = ${}
-         RETURNING 
-            uid::text as uid, 
-            email, 
-            password_hash, 
-            oauth_provider, 
-            oauth_provider_id,
-            date_part('epoch', creation_time) as creation_time",
-        updates.join(", "),
-        param_counter
-    );
-
-    let stmt = client.prepare_cached(&query).await.map_err(|e| {
-        napi::Error::from_reason(format!("Failed to prepare update statement: {e}"))
-    })?;
-
-    let row = client
-        .query_one(&stmt, &params)
+    // Handle roles
+    if let Some(role_list) = roles {
+        tx.execute(
+            "DELETE FROM public.User_Roles WHERE user_uid = CAST($1 AS text)::uuid",
+            &[&uid],
+        )
         .await
-        .map_err(|e| napi::Error::from_reason(format!("Failed to execute update: {e}")))?;
+        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
 
-    Ok(user_from_row(row))
+        for role_name in role_list {
+            tx.execute(
+                "INSERT INTO public.User_Roles (user_uid, role_id) 
+                 SELECT CAST($1 AS TEXT)::uuid, role_id FROM public.Roles WHERE role_name = $2",
+                &[&uid, &role_name],
+            )
+            .await
+            .ok();
+        }
+    }
+
+    // Handle direct permissions
+    if let Some(perm_list) = perms {
+        tx.execute(
+            "DELETE FROM public.User_Perms WHERE user_uid = CAST($1 AS text)::uuid",
+            &[&uid],
+        )
+        .await
+        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
+
+        for perm_slug in perm_list {
+            tx.execute(
+                "INSERT INTO public.User_Perms (user_uid, perm_id) 
+                 SELECT CAST($1 AS TEXT)::uuid, perm_id FROM public.Perms WHERE perm = $2",
+                &[&uid, &perm_slug],
+            )
+            .await
+            .ok();
+        }
+    }
+
+    tx.commit()
+        .await
+        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
+
+    // Return user
+    user_from_uid(&uid).await
 }

@@ -1,0 +1,180 @@
+/* Container & Header */
+.log-viewer-dark {
+  background: #1e1e1e;
+  border-radius: 8px;
+  padding: 1rem;
+  color: #d4d4d4;
+  font-family: "Fira Code", "Courier New", monospace;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.log-header {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  align-items: center;
+}
+
+.search-wrapper {
+  position: relative;
+  flex-grow: 1;
+}
+
+.log-search-input {
+  width: 100%;
+  background: #2d2d2d;
+  border: 1px solid #444;
+  color: #9cdcfe;
+  padding: 8px 12px;
+  border-radius: 4px;
+  outline: none;
+}
+
+/* Streaming Animation */
+.streaming-indicator {
+  position: absolute;
+  right: 10px;
+  top: 12px;
+  width: 8px;
+  height: 8px;
+  background: #4ec9b0;
+  border-radius: 50%;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.3;
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Terminal Table */
+.terminal-window {
+  height: 500px;
+  overflow-y: auto;
+  background: #000000;
+  border: 1px solid #333;
+  font-size: 0.85rem;
+}
+
+.terminal-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.terminal-table th {
+  position: sticky;
+  top: 0;
+  background: #252526;
+  color: #858585;
+  text-align: left;
+  padding: 8px;
+  font-size: 0.7rem;
+}
+
+.log-row {
+  border-bottom: 1px solid #1a1a1a;
+}
+.log-row:hover {
+  background: #2a2d2e;
+}
+
+.col-time {
+  color: #858585;
+  padding: 4px 8px;
+  width: 100px;
+}
+.col-src {
+  color: #ce9178;
+  padding: 4px 8px;
+  width: 150px;
+}
+.col-msg {
+  color: #d4d4d4;
+  padding: 4px 8px;
+}
+
+/* Syntax Coloring by Level */
+.lvl-badge {
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: bold;
+  font-size: 0.75rem;
+}
+
+.lvl-info .lvl-badge {
+  color: #4fc1ff;
+  background: rgba(79, 193, 255, 0.1);
+}
+.lvl-warn .lvl-badge {
+  color: #cca700;
+  background: rgba(204, 167, 0, 0.1);
+}
+.lvl-error .lvl-badge {
+  color: #f44747;
+  background: rgba(244, 71, 71, 0.1);
+}
+.lvl-debug .lvl-badge {
+  color: #b5cea8;
+  background: rgba(181, 206, 168, 0.1);
+}
+
+/* Buttons */
+.control-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.75rem;
+}
+.btn-pause {
+  background: #3e3e42;
+  color: #fff;
+}
+.btn-resume {
+  background: #0e639c;
+  color: #fff;
+}
+
+.level-filters {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+.level-btn {
+  padding: 0.25rem 0.75rem;
+  border: 1px solid #3a4a5a;
+  background: #1e2a32;
+  color: #a0b8cc;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.level-btn.active {
+  background: #2c6b9e;
+  color: white;
+  border-color: #4a9eff;
+}
+.time-range {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+.time-range input {
+  background: #1e2a32;
+  border: 1px solid #3a4a5a;
+  color: #e0e0e0;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-family: monospace;
+}

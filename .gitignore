@@ -2,5 +2,6 @@ bin/
 .direnv/
 db/redis/
 db/data/
+db/logs/
 
 *.prod

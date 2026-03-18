@@ -32,4 +32,9 @@ export const {
   resetRateLimit,
   cleanupRateLimitKeys,
   updateUser,
+  uidLookup,
+  initLogger,
+  initPanicLogging,
+  getLogs,
+  writeLog,
 } = ebinding;

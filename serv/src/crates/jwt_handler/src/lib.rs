@@ -2,11 +2,11 @@ use chrono::{Duration, Utc};
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use napi_derive::napi;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use std::env;
 use std::sync::OnceLock;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[napi(object)]
 pub struct AccessTokenClaims {
     pub uid: String,
     pub email: String,
@@ -177,27 +177,12 @@ pub async fn gen_refresh_token(uid: &str, email: &str) -> Result<(String, String
     get_jwt_manager().await?.gen_refresh_token(uid, email).await
 }
 
-pub async fn verify_access_token(token: &str) -> Result<String, String> {
-    let claims = get_jwt_manager().await?.verify_access_token(token).await?;
-    Ok(json!({
-        "uid": claims.uid,
-        "email": claims.email,
-        "iat": claims.iat,
-        "exp": claims.exp
-    })
-    .to_string())
+pub async fn verify_access_token(token: &str) -> Result<AccessTokenClaims, String> {
+    get_jwt_manager().await?.verify_access_token(token).await
 }
 
-pub async fn verify_refresh_token(token: &str) -> Result<String, String> {
-    let claims = get_jwt_manager().await?.verify_refresh_token(token).await?;
-    Ok(json!({
-        "uid": claims.uid,
-        "email": claims.email,
-        "iat": claims.iat,
-        "exp": claims.exp,
-        "jti": claims.jti
-    })
-    .to_string())
+pub async fn verify_refresh_token(token: &str) -> Result<RefreshTokenClaims, String> {
+    get_jwt_manager().await?.verify_refresh_token(token).await
 }
 
 pub async fn rotate_refresh_token(token: &str) -> Result<(String, String, String), String> {

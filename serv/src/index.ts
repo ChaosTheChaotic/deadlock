@@ -1,12 +1,23 @@
 import express from "express";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { appRouter, Ctx } from "./trpc";
+import { appRouter, Ctx, logEmitter } from "./trpc";
 import oauthRouter from "./oauth";
 import path from "path";
-import { initDbs, initRedis } from "./rlibs";
+import {
+  initDbs,
+  initPanicLogging,
+  initRedis,
+  uidLookup,
+  writeLog,
+} from "./rlibs";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
-import { cleanupExpiredTokens, cleanupRateLimitKeys } from "./rlibs/index";
+import {
+  cleanupExpiredTokens,
+  cleanupRateLimitKeys,
+  checkAccessJwt,
+  initLogger,
+} from "./rlibs/index";
 
 const app = express();
 const port = process.env.PORT ?? 8888;
@@ -25,26 +36,27 @@ app.use(
   "/trpc",
   createExpressMiddleware({
     router: appRouter,
-    createContext: ({ req, res }): Ctx => {
+    createContext: async ({ req, res }): Promise<Ctx> => {
       const signedCookies = req.signedCookies as Record<
         string,
         string | undefined
       >;
-
-      const ip = req.headers["x-forwarded-for"]
-        ? (req.headers["x-forwarded-for"] as string).split(",")[0].trim()
-        : req.socket.remoteAddress;
-
       const token = signedCookies["__Host-accessToken"];
-      const refreshToken = signedCookies["__Host-refreshToken"];
+      let user;
 
-      return {
-        token,
-        refreshToken,
-        req,
-        res,
-        ip,
-      };
+      if (token) {
+        try {
+          const jwtData = await checkAccessJwt(token);
+
+          if (jwtData.uid) {
+            user = await uidLookup(jwtData.uid);
+          }
+        } catch (e) {
+          console.error("Token validation failed", e);
+        }
+      }
+
+      return { token, req, res, user, ip: req.ip };
     },
   }),
 );
@@ -91,6 +103,15 @@ async function initializeScheduledCleanups() {
 }
 
 async function initializeServer() {
+  const logDbPath = path.resolve(__dirname, "../../db/logs/logs.sqlite");
+  await initLogger(logDbPath, (err, payload) => {
+    if (err) {
+      console.error("Logger callback error:", err);
+      return;
+    }
+    logEmitter.emit("new_log", payload);
+  });
+  await initPanicLogging();
   try {
     console.log("Initializing database pools...");
     await initDbs();
@@ -111,4 +132,14 @@ async function initializeServer() {
   }
 }
 
+app.use((err: unknown, req: express.Request, res: express.Response) => {
+  const errorMessage = err instanceof Error ? err.message : String(err);
+
+  writeLog(
+    "error",
+    `Express Unhandled Error at ${req.path}: ${errorMessage}`,
+  ).catch((logErr) => console.error("Failed to write to log DB:", logErr));
+
+  res.status(500).json({ error: "Internal Server Error" });
+});
 void initializeServer();
